@@ -1,65 +1,30 @@
-import { useState, useEffect, useRef } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+
+import { PipelineProvider } from './context/PipelineContext';
+import AudioInput from './components/AudioInput';
+import PreprocessingStatus from './components/PreprocessingStatus';
+import MFCCExtraction from './components/MFCCExtraction';
+import ModelInference from './components/ModelInference';
+import IntermediatePredictions from './components/IntermediatePredictions';
+import FinalPredictions from './components/FinalPredictions';
+import PipelineStepper from './components/PipelineStepper';
+import OverallProgressBar from './components/OverallProgressBar';
 
 function App() {
-  const [count, setCount] = useState(0)
-  const [wsMessage, setWsMessage] = useState('')
-  const ws = useRef<WebSocket | null>(null)
-
-  useEffect(() => {
-    ws.current = new WebSocket('ws://localhost:8000/ws')
-    ws.current.onmessage = (event) => {
-      setWsMessage(event.data)
-    }
-    ws.current.onopen = () => {
-      console.log('WebSocket connected')
-    }
-    ws.current.onclose = () => {
-      console.log('WebSocket disconnected')
-    }
-    return () => {
-      ws.current?.close()
-    }
-  }, [])
-
-  const sendMessage = () => {
-    if (ws.current && ws.current.readyState === WebSocket.OPEN) {
-      ws.current.send(`Count is ${count}`)
-    }
-  }
-
   return (
-    <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
+    <PipelineProvider>
+      <div style={{ maxWidth: 800, margin: '0 auto', padding: 24 }}>
+        <h1>Speech Emotion Recognition Pipeline</h1>
+        <PipelineStepper />
+        <OverallProgressBar />
+        <AudioInput />
+        <PreprocessingStatus />
+        <MFCCExtraction />
+        <ModelInference />
+        <IntermediatePredictions />
+        <FinalPredictions />
       </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <button onClick={sendMessage}>
-          Send count to WebSocket
-        </button>
-        <p>
-          WebSocket response: <code>{wsMessage}</code>
-        </p>
-        <p>
-          Edit <code>src/App.tsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
-  )
+    </PipelineProvider>
+  );
 }
 
-export default App
+export default App;
