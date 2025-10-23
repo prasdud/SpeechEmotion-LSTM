@@ -1,10 +1,34 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import reactLogo from './assets/react.svg'
 import viteLogo from '/vite.svg'
 import './App.css'
 
 function App() {
   const [count, setCount] = useState(0)
+  const [wsMessage, setWsMessage] = useState('')
+  const ws = useRef<WebSocket | null>(null)
+
+  useEffect(() => {
+    ws.current = new WebSocket('ws://localhost:8000/ws')
+    ws.current.onmessage = (event) => {
+      setWsMessage(event.data)
+    }
+    ws.current.onopen = () => {
+      console.log('WebSocket connected')
+    }
+    ws.current.onclose = () => {
+      console.log('WebSocket disconnected')
+    }
+    return () => {
+      ws.current?.close()
+    }
+  }, [])
+
+  const sendMessage = () => {
+    if (ws.current && ws.current.readyState === WebSocket.OPEN) {
+      ws.current.send(`Count is ${count}`)
+    }
+  }
 
   return (
     <>
@@ -21,6 +45,12 @@ function App() {
         <button onClick={() => setCount((count) => count + 1)}>
           count is {count}
         </button>
+        <button onClick={sendMessage}>
+          Send count to WebSocket
+        </button>
+        <p>
+          WebSocket response: <code>{wsMessage}</code>
+        </p>
         <p>
           Edit <code>src/App.tsx</code> and save to test HMR
         </p>
