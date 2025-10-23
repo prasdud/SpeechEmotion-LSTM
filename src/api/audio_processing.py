@@ -2,6 +2,12 @@
 prepare audio for feature extraction
 '''
 
+def process_audio(file_bytes):
+    '''
+    Process raw audio bytes
+    '''
+    pass
+
 def load_audio(file_bytes):
     '''
     Load audio bytes

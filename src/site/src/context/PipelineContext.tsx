@@ -17,7 +17,7 @@ export interface PipelineState {
 const PipelineContext = createContext<{
   state: PipelineState;
   setState: React.Dispatch<React.SetStateAction<PipelineState>>;
-  ws: React.MutableRefObject<WebSocket | null>;
+  ws: React.RefObject<WebSocket | null>;
 } | undefined>(undefined);
 
 export const usePipeline = () => {

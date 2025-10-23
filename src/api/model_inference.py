@@ -2,6 +2,12 @@
 Load pre trained LSTM model and perform inference on MFCC features.
 '''
 
+def run_inference(mfcc_features):
+    '''
+    Run model inference on MFCC features and send predictions over websocket
+    '''
+    pass
+
 def load_model(model_path):
     '''
     Load the pre-trained LSTM model from the specified path
