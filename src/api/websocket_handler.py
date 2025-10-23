@@ -3,9 +3,9 @@ Central hub for all messages from backend to frontend and vice versa.
 '''
 import json
 import logging
-from audio_processing import process_audio
-from mfcc_extraction import compute_mfcc
-from model_inference import run_inference
+from src.api.audio_processing import process_audio
+from src.api.mfcc_extraction import compute_mfcc
+from src.api.model_inference import run_inference
 
 logging.basicConfig(level=logging.INFO)
 
@@ -25,7 +25,7 @@ async def handle_websocket(websocket):
     except Exception as e:
         logging.error(f"Websocket error: {e}")
         await websocket.close()
-        
+
 async def handle_message(websocket, message):
     ''''
         recieve messages from frontend

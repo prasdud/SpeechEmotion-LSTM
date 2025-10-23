@@ -4,7 +4,7 @@ Initializes the FastAPI application, set up the websocket endpoint, handles webs
 from fastapi import FastAPI, WebSocket
 from fastapi.responses import HTMLResponse
 import logging
-from websocket_handler import handle_websocket
+from src.api.websocket_handler import handle_websocket
 
 app = FastAPI()
 logging.basicConfig(level=logging.INFO)
