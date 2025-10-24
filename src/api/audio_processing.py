@@ -21,30 +21,35 @@ async def process_audio(file_bytes, websocket=None):
     try:
         audio, sample_rate = load_audio(file_bytes)
         if websocket:
-            await send_update(websocket, "processing", {
+            await send_update(websocket, "audio_loading", {
                 "stage": "audio_loading",
                 "message": f"Audio loaded with sample rate {sample_rate} Hz"
             })
-
     except Exception as e:
         logging.error(f"Error loading audio: {e}")
         raise e
     
     rs_audio = resample_audio(audio, sample_rate, target_rate=SAMPLE_RATE)
     if websocket:
-        await send_update(websocket, "processing", {
+        await send_update(websocket, "audio_resampling", {
             "stage": "audio_resampling",
             "message": f"Audio resampled to {SAMPLE_RATE} Hz"
         })
 
     norm_audio = normalize_audio(rs_audio)
     if websocket:
-        await send_update(websocket, "processing", {
+        await send_update(websocket, "audio_normalization", {
             "stage": "audio_normalization",
             "message": f"Audio normalized"
         })
         
-    frames = await frame_audio(norm_audio, sample_rate=SAMPLE_RATE, frame_size=0.025, hop_length=0.010)
+    frames = await frame_audio(norm_audio, SAMPLE_RATE, websocket=websocket, frame_size=0.025, hop_length=0.010)
+    # Send the message expected by the frontend after framing
+    if websocket:
+        await send_update(websocket, "audio_processing", {
+            "stage": "audio_processing",
+            "message": "Audio framed"
+        })
     logging.info(f"Processed audio into {frames.shape[1]} frames at {SAMPLE_RATE} Hz")
     return frames, SAMPLE_RATE
     

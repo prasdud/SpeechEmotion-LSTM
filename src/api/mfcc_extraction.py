@@ -53,5 +53,12 @@ async def compute_mfcc(websocket, frames, sample_rate=16000, num_mfcc=13):
     
     mfcc_features = np.vstack(mfcc_features)  # shape = (num_frames, num_mfcc)
     logging.info(f"Computed MFCC features for {total_frames} frames, shape={mfcc_features.shape}")
+
+    # Send final update for frontend to trigger next step
+    if websocket:
+        await send_update(websocket, "MFCC_EXTRACTION", {
+            "stage": "MFCC_EXTRACTION",
+            "message": "MFCC extraction completed"
+        })
     
     return mfcc_features

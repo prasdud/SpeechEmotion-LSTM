@@ -1,25 +1,25 @@
-'''
+"""
 Central hub for all messages from backend to frontend and vice versa.
-'''
+Handles per-connection state for audio frames, MFCCs, and inference results.
+"""
 import json
 import logging
+import base64
+
 from src.api.audio_processing import process_audio
 from src.api.mfcc_extraction import compute_mfcc
 from src.api.model_inference import run_inference
-from src.api.utils.utils import log_function
-from src.api.utils.utils import send_update
-import base64
+from src.api.utils.utils import send_update, log_function
 
 logging.basicConfig(level=logging.INFO)
 
 @log_function
 async def handle_websocket(websocket):
-    '''
-        main websocket handler
-        calls handle_message to recieve messages
-        calls send_update to send messages
-    '''
-    logging.info("Websocket handler started.")
+    """
+    Main websocket handler
+    """
+    state = {}  # store frames, sample_rate, MFCCs, etc. for this connection
+
     try:
         while True:
             raw_data = await websocket.receive_text()
@@ -33,37 +33,65 @@ async def handle_websocket(websocket):
                 continue
 
             logging.info(f"Parsed message: {message}")
-            await handle_message(websocket, message)
+            await handle_message(websocket, message, state)
+
     except Exception as e:
         logging.error(f"Websocket error: {e}")
         await websocket.close()
 
+
 @log_function
-async def handle_message(websocket, message):
-    ''''
-        recieve messages from frontend
-        parse JSON 'action' field
-        call corresponding function in backend
-        send status updates / final prediction
-    '''
+async def handle_message(websocket, message, state):
+    """
+    Handle messages from frontend and call corresponding backend functions
+    Uses 'state' to store intermediate results per connection
+    """
     action = message.get("action")
     data = message.get("data", {})
-    
+
     logging.info(f"Handling message with action: {action}")
-    logging.info(f"Message data: {data}")
-    
+
     if action == "upload_audio":
         logging.info("Processing audio upload.")
-        file_bytes = base64.b64decode(data["content"])
-        await process_audio(file_bytes, websocket)
+        try:
+            file_bytes = base64.b64decode(data["content"])
+        except Exception as e:
+            await send_update(websocket, "error", {"message": f"Failed to decode audio: {e}"})
+            return
+
+        frames, sr = await process_audio(file_bytes, websocket)
+        state["frames"] = frames
+        state["sr"] = sr
+        await send_update(websocket, "completed", {
+            "stage": "AUDIO_UPLOAD",
+            "message": f"Audio uploaded and framed into {frames.shape[1]} frames"
+        })
 
     elif action == "mfcc_extraction":
+        frames = state.get("frames")
+        sr = state.get("sr")
+        if frames is None or sr is None:
+            await send_update(websocket, "error", {"message": "No audio frames found. Upload audio first."})
+            return
+
         logging.info("Processing MFCC extraction.")
-        await compute_mfcc(websocket, data)
+        mfccs = await compute_mfcc(websocket, frames, sample_rate=sr)
+        state["mfccs"] = mfccs
+        await send_update(websocket, "completed", {
+            "stage": "MFCC_EXTRACTION",
+            "message": f"MFCC extraction done. Shape: {mfccs.shape}"
+        })
 
     elif action == "model_inference":
+        mfccs = state.get("mfccs")
+        if mfccs is None:
+            await send_update(websocket, "error", {"message": "No MFCCs found. Extract MFCC first."})
+            return
+
         logging.info("Processing model inference.")
-        await run_inference(websocket, data)
+        model_path = data.get("model_path", "path/to/model.pt")
+        await run_inference(websocket, mfccs, model_path)
+
     else:
         logging.warning(f"Unknown action: {action}")
         await send_update(websocket, "error", {"message": f"Unknown action: {action}"})
