@@ -7,6 +7,7 @@ from src.api.audio_processing import process_audio
 from src.api.mfcc_extraction import compute_mfcc
 from src.api.model_inference import run_inference
 from src.api.utils.utils import log_function
+from src.api.utils.utils import send_update
 
 logging.basicConfig(level=logging.INFO)
 
@@ -64,16 +65,3 @@ async def handle_message(websocket, message):
     else:
         logging.warning(f"Unknown action: {action}")
         await send_update(websocket, "error", {"message": f"Unknown action: {action}"})
-
-@log_function
-async def send_update(websocket, status: str, data: dict):
-    '''
-        format JSON message and send over websocket
-    '''
-    try:
-        await websocket.send_json({
-            "status": status,
-            "data": data
-        })
-    except Exception as e:
-        logging.error(f"Failed to send update: {e}")

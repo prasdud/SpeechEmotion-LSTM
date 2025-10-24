@@ -5,12 +5,13 @@ import librosa
 import logging
 import io
 import numpy as np
-from src.api.websocket_handler import send_update
-from src.api.utils.utils import log_function
+from src.api.utils.utils import log_function, send_update
 
 SAMPLE_RATE = 16000
 FRAME_SIZE = 0.025  # 25ms
 HOP_LENGTH = 0.010  # 10ms
+
+logging.basicConfig(level=logging.INFO)
 
 @log_function
 async def process_audio(file_bytes, websocket=None):

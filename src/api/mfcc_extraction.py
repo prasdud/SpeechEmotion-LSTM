@@ -1,11 +1,13 @@
 '''
 compute MFCC features from audio frames.
 '''
-from src.api.websocket_handler import send_update
 import librosa
 import numpy as np
 import logging
-from src.api.utils.utils import log_function
+from src.api.utils.utils import log_function, send_update
+
+logging.basicConfig(level=logging.INFO)
+
 
 @log_function
 async def compute_mfcc(websocket, frames, sample_rate=16000, num_mfcc=13):

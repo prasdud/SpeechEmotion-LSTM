@@ -2,10 +2,11 @@
 Load pre trained LSTM model and perform inference on MFCC features.
 '''
 import torch
-from src.api.websocket_handler import send_update
 import logging
 import numpy as np
-from src.api.utils.utils import log_function
+from src.api.utils.utils import log_function, send_update
+
+logging.basicConfig(level=logging.INFO)
 
 @log_function
 def load_model(model_path):

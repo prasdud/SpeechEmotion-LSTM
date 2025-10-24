@@ -13,6 +13,17 @@ def log_function(func):
         return result
     return wrapper
 
+async def send_update(websocket, status: str, data: dict):
+    '''
+        format JSON message and send over websocket
+    '''
+    try:
+        await websocket.send_json({
+            "status": status,
+            "data": data
+        })
+    except Exception as e:
+        logging.error(f"Failed to send update: {e}")
 '''
 @log_function
 def process_order(order_id):
