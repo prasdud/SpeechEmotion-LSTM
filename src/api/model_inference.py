@@ -5,13 +5,20 @@ import torch
 from src.api.websocket_handler import send_update
 import logging
 import numpy as np
+from src.api.utils.utils import log_function
 
-
+@log_function
 def load_model(model_path):
     '''
     Load the pre-trained LSTM model from the specified path
     '''
-    model = torch.load(model_path)
+    logging.info(f"Loading model from {model_path}")
+    try:
+        model = torch.load(model_path)
+    except Exception as e:
+        logging.error(f"Error loading model: {e}")
+        raise e
+    logging.info(f"Model loaded successfully")
     model.eval() #important for inference
     return model
 
@@ -19,12 +26,19 @@ def load_model(model_path):
 
 
 # main orchestral function
+@log_function
 async def run_inference(websocket, mfcc_features, model_path):
     '''
     Run model inference on MFCC features and send predictions over websocket
     '''
     logging.info(f"Loading model from {model_path}")
-    model = load_model(model_path)
+    try:
+        model = load_model(model_path)
+    except Exception as e:
+        logging.error(f"Error loading model: {e}")
+        await send_update(websocket, "error", {"message": f"Error loading model: {e}"})
+        return
+    
     logging.info(f"Model loaded successfully")
 
     await send_update(websocket, "processing", {
@@ -32,28 +46,42 @@ async def run_inference(websocket, mfcc_features, model_path):
         "message": f"Model running..."
     })
 
-    # convert MFCCs to toruch tensor with batch dimension
+    # convert MFCCs to torch tensor with batch dimension
     input_tensor = torch.tensor(mfcc_features, dtype=torch.float32).unsqueeze(0) # shape (1, seq_len, num_mfcc)
 
     hidden = None
     total_frames = input_tensor.shape[1]
     intermediate_predictions = []
-    for i in range(total_frames):
-        frame = input_tensor[:, i:i+1, :] # shape (1, 1, num_mfcc)
+    try:
+        for i in range(total_frames):
+            frame = input_tensor[:, i:i+1, :] # shape (1, 1, num_mfcc)
+            output, hidden = model(frame, hidden) # output shape (1, num_classes)
+            probabilities = torch.softmax(output, dim=1).detach().numpy()[0]
+            intermediate_predictions.append(probabilities)
 
-        output, hidden = model(frame, hidden) # output shape (1, num_classes)
-        probabilities = torch.softmax(output, dim=1).detach().numpy()[0]
+            if i % 10 == 0:
+                progress = round((i / total_frames) * 100, 2)
+                await send_update(websocket, "processing", {
+                    "stage": "LSTM_INFERENCE",
+                    "progress": progress,
+                    "message": f"Processed {i}/{total_frames} frames ({progress}%)",
+                    "partial_prediction": probabilities.tolist()
+                })
+    except Exception as e:
+        logging.error(f"Error during inference: {e}")
+        await send_update(websocket, "error", {
+            "stage": "LSTM_INFERENCE",
+            "message": f"Error during inference: {e}"
+        })
+        return
 
-        intermediate_predictions.append(probabilities)
-
-        if i % 10 == 0: # send update every 10 frames
-            progress = round((i / total_frames) * 100, 2)
-            await send_update(websocket, "processing", {
-                "stage": "LSTM_INFERENCE",
-                "progress": progress,
-                "message": f"Processed {i}/{total_frames} frames ({progress}%)",
-                "partial_prediction": probabalities.tolist()
-            })
+    if not intermediate_predictions:
+        logging.error("No predictions were made during inference.")
+        await send_update(websocket, "error", {
+            "stage": "LSTM_INFERENCE",
+            "message": "No predictions were made during inference."
+        })
+        return
 
     # final prediction from last frame
     final_probabilities = intermediate_predictions[-1]

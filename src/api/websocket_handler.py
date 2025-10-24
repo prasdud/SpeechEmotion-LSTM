@@ -6,26 +6,37 @@ import logging
 from src.api.audio_processing import process_audio
 from src.api.mfcc_extraction import compute_mfcc
 from src.api.model_inference import run_inference
+from src.api.utils.utils import log_function
 
 logging.basicConfig(level=logging.INFO)
 
+@log_function
 async def handle_websocket(websocket):
     '''
         main websocket handler
         calls handle_message to recieve messages
         calls send_update to send messages
     '''
+    logging.info("Websocket handler started.")
     try:
         while True:
             raw_data = await websocket.receive_text()
             logging.info(f"Received data: {raw_data}")
-            message = json.loads(raw_data)
+
+            try:
+                message = json.loads(raw_data)
+            except json.JSONDecodeError as e:
+                logging.error(f"Error decoding JSON: {e}")
+                await send_update(websocket, "error", {"message": f"Error decoding JSON: {e}"})
+                continue
+
             logging.info(f"Parsed message: {message}")
             await handle_message(websocket, message)
     except Exception as e:
         logging.error(f"Websocket error: {e}")
         await websocket.close()
 
+@log_function
 async def handle_message(websocket, message):
     ''''
         recieve messages from frontend
@@ -35,20 +46,26 @@ async def handle_message(websocket, message):
     '''
     action = message.get("action")
     data = message.get("data", {})
-
+    
+    logging.info(f"Handling message with action: {action}")
+    logging.info(f"Message data: {data}")
+    
     if action == "upload_audio":
+        logging.info("Processing audio upload.")
         await process_audio(websocket, data)
 
     elif action == "mfcc_extraction":
+        logging.info("Processing MFCC extraction.")
         await compute_mfcc(websocket, data)
 
     elif action == "model_inference":
+        logging.info("Processing model inference.")
         await run_inference(websocket, data)
     else:
         logging.warning(f"Unknown action: {action}")
         await send_update(websocket, "error", {"message": f"Unknown action: {action}"})
 
-
+@log_function
 async def send_update(websocket, status: str, data: dict):
     '''
         format JSON message and send over websocket

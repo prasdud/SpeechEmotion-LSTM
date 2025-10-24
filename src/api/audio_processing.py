@@ -6,35 +6,63 @@ import logging
 import io
 import numpy as np
 from src.api.websocket_handler import send_update
+from src.api.utils.utils import log_function
 
 SAMPLE_RATE = 16000
 FRAME_SIZE = 0.025  # 25ms
 HOP_LENGTH = 0.010  # 10ms
 
-async def process_audio(file_bytes):
+@log_function
+async def process_audio(file_bytes, websocket=None):
     '''
     Process raw audio bytes
     '''
-    audio, sample_rate = load_audio(file_bytes)
+    try:
+        audio, sample_rate = load_audio(file_bytes)
+        if websocket:
+            await send_update(websocket, "processing", {
+                "stage": "audio_loading",
+                "message": f"Audio loaded with sample rate {sample_rate} Hz"
+            })
+
+    except Exception as e:
+        logging.error(f"Error loading audio: {e}")
+        raise e
+    
     rs_audio = resample_audio(audio, sample_rate, target_rate=SAMPLE_RATE)
+    if websocket:
+        await send_update(websocket, "processing", {
+            "stage": "audio_resampling",
+            "message": f"Audio resampled to {SAMPLE_RATE} Hz"
+        })
+
     norm_audio = normalize_audio(rs_audio)
+    if websocket:
+        await send_update(websocket, "processing", {
+            "stage": "audio_normalization",
+            "message": f"Audio normalized"
+        })
+        
     frames = await frame_audio(norm_audio, sample_rate=SAMPLE_RATE, frame_size=0.025, hop_length=0.010)
     logging.info(f"Processed audio into {frames.shape[1]} frames at {SAMPLE_RATE} Hz")
     return frames, SAMPLE_RATE
     
-
+@log_function
 def load_audio(file_bytes):
     '''
     Load audio bytes
     converts from bytes to waveform
     '''
     audio_stream = io.BytesIO(file_bytes)
-    waveform, sample_rate = librosa.load(audio_stream, sr=None)
-    logging.info(f"Loaded audio with sample rate: {sample_rate}, waveform length: {len(waveform)}")
-    logging.info(f"Waveform shape: {waveform.shape}")
+    try:
+        waveform, sample_rate = librosa.load(audio_stream, sr=None)
+    except Exception as e:
+        logging.error(f"Error librosa loading audio: {e}")
+        raise e
+    logging.info(f"Loaded audio with sample rate: {sample_rate}, waveform length: {len(waveform)}, waveform type: {type(waveform)}, waveform shape: {waveform.shape}")
     return waveform, sample_rate
     
-
+@log_function
 def resample_audio(audio, current_rate, target_rate):
     '''
     Resample audio to target rate
@@ -46,7 +74,7 @@ def resample_audio(audio, current_rate, target_rate):
         return resampled_waveform
     return audio
     
-
+@log_function
 def normalize_audio(audio):
     '''
     Normalize audio data
@@ -57,7 +85,7 @@ def normalize_audio(audio):
     return norm_audio
 
 
-
+@log_function
 async def frame_audio(audio, sr, websocket=None, frame_size=FRAME_SIZE, hop_length=HOP_LENGTH):
     '''
     Frame audio into overlapping frames
@@ -65,7 +93,6 @@ async def frame_audio(audio, sr, websocket=None, frame_size=FRAME_SIZE, hop_leng
     frame_length = int(frame_size * sr)         # 25 ms frames
     hop_length = int(hop_length * sr)   # 10 ms overlap
     frames = librosa.util.frame(audio, frame_length=frame_length, hop_length=hop_length)
-    logging.info(f"Framed audio into {frames.shape[1]} frames of length {frame_length}")
 
     if websocket:
         await send_update(websocket, "processing", {
