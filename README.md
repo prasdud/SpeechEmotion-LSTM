@@ -3,12 +3,7 @@ A web-based application that analyzes audio recordings to automatically detect t
 
 
 ## TODO
-- add exception handling for websocket recieve / send
-- ensure the uploaded file is .wav and matches expected sample rate / channels
-- add better websocket updates
-- add better logging
 - add LSTM model
-- check async await consistency satisfied
-- there is a circular import issue in audio_processing.py, handle it
 - work on the frontend
+- ensure the uploaded file is .wav and matches expected sample rate / channels
 - dockerize the entire app

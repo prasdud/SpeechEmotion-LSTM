@@ -1,11 +1,11 @@
 INFO:     Will watch for changes in these directories: ['/home/prasdud/playground/python/SpeechEmotion-LSTM']
 INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
-INFO:     Started reloader process [181322] using StatReload
-INFO:     Started server process [181324]
+INFO:     Started reloader process [182690] using StatReload
+INFO:     Started server process [182692]
 INFO:     Waiting for application startup.
 INFO:     Application startup complete.
 INFO:root:WebSocket connection request received.
-INFO:     127.0.0.1:42904 - "WebSocket /ws" [accepted]
+INFO:     127.0.0.1:58612 - "WebSocket /ws" [accepted]
 INFO:root:WebSocket connection accepted.
 INFO:root:Starting WebSocket handler.
 INFO:src.api.utils.utils:Entering handle_websocket
@@ -104,8 +104,7 @@ INFO:src.api.utils.utils:Entering load_model
 INFO:root:Loading model from path/to/model.pt
 ERROR:root:Error loading model: [Errno 2] No such file or directory: 'path/to/model.pt'
 ERROR:root:Error loading model: [Errno 2] No such file or directory: 'path/to/model.pt'
-INFO:     Shutting down
-ERROR:root:Websocket error: (1012, None)
+ERROR:root:Websocket error: (1000, '')
 ERROR:root:WebSocket handler error: Unexpected ASGI message 'websocket.close', after sending 'websocket.close' or response already completed.
 Traceback (most recent call last):
   File "/home/prasdud/playground/python/SpeechEmotion-LSTM/src/api/websocket_handler.py", line 25, in handle_websocket
@@ -114,7 +113,7 @@ Traceback (most recent call last):
     self._raise_on_disconnect(message)
   File "/home/prasdud/playground/python/SpeechEmotion-LSTM/.venv/lib/python3.10/site-packages/starlette/websockets.py", line 114, in _raise_on_disconnect
     raise WebSocketDisconnect(message["code"], message.get("reason"))
-starlette.websockets.WebSocketDisconnect: (1012, None)
+starlette.websockets.WebSocketDisconnect: (1000, '')
 
 During handling of the above exception, another exception occurred:
 
@@ -141,7 +140,7 @@ Traceback (most recent call last):
     self._raise_on_disconnect(message)
   File "/home/prasdud/playground/python/SpeechEmotion-LSTM/.venv/lib/python3.10/site-packages/starlette/websockets.py", line 114, in _raise_on_disconnect
     raise WebSocketDisconnect(message["code"], message.get("reason"))
-starlette.websockets.WebSocketDisconnect: (1012, None)
+starlette.websockets.WebSocketDisconnect: (1000, '')
 
 During handling of the above exception, another exception occurred:
 
@@ -205,7 +204,8 @@ Traceback (most recent call last):
     raise RuntimeError('Cannot call "send" once a close message has been sent.')
 RuntimeError: Cannot call "send" once a close message has been sent.
 INFO:     connection closed
+INFO:     Shutting down
 INFO:     Waiting for application shutdown.
 INFO:     Application shutdown complete.
-INFO:     Finished server process [181324]
-INFO:     Stopping reloader process [181322]
+INFO:     Finished server process [182692]
+INFO:     Stopping reloader process [182690]
