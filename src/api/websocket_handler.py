@@ -8,6 +8,7 @@ from src.api.mfcc_extraction import compute_mfcc
 from src.api.model_inference import run_inference
 from src.api.utils.utils import log_function
 from src.api.utils.utils import send_update
+import base64
 
 logging.basicConfig(level=logging.INFO)
 
@@ -53,7 +54,8 @@ async def handle_message(websocket, message):
     
     if action == "upload_audio":
         logging.info("Processing audio upload.")
-        await process_audio(websocket, data)
+        file_bytes = base64.b64decode(data["content"])
+        await process_audio(file_bytes, websocket)
 
     elif action == "mfcc_extraction":
         logging.info("Processing MFCC extraction.")
