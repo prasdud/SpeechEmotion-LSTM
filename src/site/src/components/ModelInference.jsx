@@ -14,7 +14,9 @@ const EMOTIONS = {
   0: { name: 'Happy', emoji: '😊', color: '#FFD700' },
   1: { name: 'Sad', emoji: '😢', color: '#4A90E2' },
   2: { name: 'Angry', emoji: '😠', color: '#E74C3C' },
-  3: { name: 'Neutral', emoji: '😐', color: '#95A5A6' }
+  3: { name: 'Neutral', emoji: '😐', color: '#95A5A6' },
+  4: { name: 'Fearful', emoji: '😨', color: '#9B59B6' },
+  5: { name: 'Surprised', emoji: '😲', color: '#F39C12' }
 };
 
 function ModelInference() {
