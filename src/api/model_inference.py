@@ -46,7 +46,8 @@ async def run_inference(websocket, mfcc_features, model_path):
             "message": "[Placeholder] Model file not found. Returning fake prediction."
         })
         await send_update(websocket, "completed", {
-            "stage": "LSTM_INFERENCE",
+            "stage": "completed",
+            "progress": 100,
             "final_prediction": {
                 "class": final_class,
                 "confidence": fake_probs
@@ -122,7 +123,8 @@ async def run_inference(websocket, mfcc_features, model_path):
     logging.info(f"Final prediction: class {final_class} with probabilities {final_probabilities}")
     
     await send_update(websocket, "completed", {
-        "stage": "LSTM_INFERENCE",
+        "stage": "completed",
+        "progress": 100,
         "final_prediction": {
             "class": final_class,
             "confidence": final_probabilities.tolist()
