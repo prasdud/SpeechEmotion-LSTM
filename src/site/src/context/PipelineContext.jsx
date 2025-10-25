@@ -26,9 +26,11 @@ export const PipelineProvider = ({ children }) => {
     stage: null,
     message: '',
     progress: 0,
+    lastGoodProgress: 0,
     partialPredictions: [],
     finalPrediction: null,
     lastMessage: null,
+    pipelineCompleted: false,
   });
 
   const ws = useRef(null);
@@ -67,40 +69,55 @@ export const PipelineProvider = ({ children }) => {
           const response = JSON.parse(event.data);
           console.log('[frontend] Backend message received:', response);
 
-          // Extract fields from backend response (matches test.py logic)
+          // Extract fields from backend response (matches backend logic)
           const data = response.data || {};
           const stage = data.stage || response.stage;
           const message = data.message || response.message || '';
-          const finalPrediction =
-            data.final_prediction || response.final_prediction;
-          const progress = data.progress || 0;
-          const partialPrediction =
-            data.partial_prediction || response.partial_prediction;
+          // Progress can be in data.progress or response.progress, ensure it's a number
+          let progress = data.progress !== undefined ? data.progress : response.progress;
+          if (typeof progress === 'string') progress = parseFloat(progress);
+          if (isNaN(progress)) progress = 0;
+          // Final prediction can be in data.final_prediction or response.final_prediction
+          const finalPrediction = data.final_prediction || response.final_prediction;
+          const partialPrediction = data.partial_prediction || response.partial_prediction;
 
-          // Update state with backend message
           setState((prev) => {
             const updatedPartialPredictions = [...prev.partialPredictions];
             if (partialPrediction && !updatedPartialPredictions.includes(partialPrediction)) {
               updatedPartialPredictions.push(partialPrediction);
             }
 
+            // If progress is nonzero, update lastGoodProgress
+            const newProgress = progress;
+            let lastGoodProgress = prev.lastGoodProgress || 0;
+            if (newProgress && newProgress > 0) {
+              lastGoodProgress = newProgress;
+            }
+
+            // If pipeline is completed, preserve lastGoodProgress and set pipelineCompleted flag
+            const pipelineCompleted = (stage === 'completed');
+
             const newState = {
               ...prev,
               stage: stage || prev.stage,
               message,
-              progress,
+              progress: pipelineCompleted ? lastGoodProgress : newProgress,
+              lastGoodProgress,
               partialPredictions: updatedPartialPredictions,
               finalPrediction: finalPrediction || prev.finalPrediction,
               lastMessage: response,
               wsConnected: true,
               error: null,
+              pipelineCompleted,
             };
 
             console.log('[frontend] State updated:', {
               stage: newState.stage,
               message: newState.message,
               progress: newState.progress,
+              lastGoodProgress: newState.lastGoodProgress,
               finalPrediction: newState.finalPrediction,
+              pipelineCompleted: newState.pipelineCompleted,
             });
 
             return newState;
@@ -110,6 +127,8 @@ export const PipelineProvider = ({ children }) => {
           setState((prev) => ({
             ...prev,
             error: 'Failed to parse backend message',
+            progress: prev.progress,
+            lastGoodProgress: prev.lastGoodProgress
           }));
         }
       };
@@ -134,6 +153,8 @@ export const PipelineProvider = ({ children }) => {
         setState((prev) => ({
           ...prev,
           error: 'WebSocket not connected',
+          progress: prev.progress,
+          lastGoodProgress: prev.lastGoodProgress
         }));
         return;
       }
@@ -146,6 +167,8 @@ export const PipelineProvider = ({ children }) => {
       setState((prev) => ({
         ...prev,
         error: 'Failed to send action to backend',
+        progress: prev.progress,
+        lastGoodProgress: prev.lastGoodProgress
       }));
     }
   };
@@ -161,7 +184,11 @@ export const PipelineProvider = ({ children }) => {
             ...prev,
             stage: 'AUDIO_UPLOAD',
             progress: 0,
+            lastGoodProgress: 0,
             message: 'Uploading audio...',
+            pipelineCompleted: false,
+            finalPrediction: null,
+            partialPredictions: [],
           }));
           console.log('[frontend] uploadAudio: sending audio to backend');
           sendAction('upload_audio', {
@@ -169,17 +196,17 @@ export const PipelineProvider = ({ children }) => {
             content: base64,
           });
         } catch (err) {
-          setState((prev) => ({ ...prev, error: 'Failed to process audio file' }));
+  setState((prev) => ({ ...prev, error: 'Failed to process audio file', progress: prev.progress, lastGoodProgress: prev.lastGoodProgress }));
           console.error('[frontend] uploadAudio error:', err);
         }
       };
       reader.onerror = (e) => {
-        setState((prev) => ({ ...prev, error: 'Failed to read audio file' }));
+  setState((prev) => ({ ...prev, error: 'Failed to read audio file', progress: prev.progress, lastGoodProgress: prev.lastGoodProgress }));
         console.error('[frontend] uploadAudio FileReader error:', e);
       };
       reader.readAsDataURL(file);
     } catch (err) {
-      setState((prev) => ({ ...prev, error: 'Unexpected error during audio upload' }));
+  setState((prev) => ({ ...prev, error: 'Unexpected error during audio upload', progress: prev.progress, lastGoodProgress: prev.lastGoodProgress }));
       console.error('[frontend] uploadAudio unexpected error:', err);
     }
   };
@@ -194,7 +221,7 @@ export const PipelineProvider = ({ children }) => {
       console.log('[frontend] triggerMFCCExtraction: sending mfcc_extraction');
       sendAction('mfcc_extraction', {});
     } catch (err) {
-      setState((prev) => ({ ...prev, error: 'Failed to trigger MFCC extraction' }));
+  setState((prev) => ({ ...prev, error: 'Failed to trigger MFCC extraction', progress: prev.progress, lastGoodProgress: prev.lastGoodProgress }));
       console.error('[frontend] triggerMFCCExtraction error:', err);
     }
   };
@@ -209,7 +236,7 @@ export const PipelineProvider = ({ children }) => {
       console.log('[frontend] triggerModelInference: sending model_inference');
       sendAction('model_inference', {});
     } catch (err) {
-      setState((prev) => ({ ...prev, error: 'Failed to trigger model inference' }));
+  setState((prev) => ({ ...prev, error: 'Failed to trigger model inference', progress: prev.progress, lastGoodProgress: prev.lastGoodProgress }));
       console.error('[frontend] triggerModelInference error:', err);
     }
   };
@@ -222,9 +249,11 @@ export const PipelineProvider = ({ children }) => {
       stage: 'idle',
       message: '',
       progress: 0,
+      lastGoodProgress: 0,
       partialPredictions: [],
       finalPrediction: null,
       lastMessage: null,
+      pipelineCompleted: false,
     });
     console.log('[frontend] Pipeline reset to initial state');
   };

@@ -1,11 +1,7 @@
 import { useContext } from 'react';
 import { PipelineProvider, PipelineContext } from './context/PipelineContext';
 import AudioInput from './components/AudioInput';
-import PreprocessingStatus from './components/PreprocessingStatus';
-import MFCCExtraction from './components/MFCCExtraction';
 import ModelInference from './components/ModelInference';
-import IntermediatePredictions from './components/IntermediatePredictions';
-import FinalPredictions from './components/FinalPredictions';
 import PipelineStepper from './components/PipelineStepper';
 import OverallProgressBar from './components/OverallProgressBar';
 
@@ -19,29 +15,10 @@ function PipelineStages() {
         return <AudioInput />;
       case 'AUDIO_UPLOAD':
       case 'audio_processing':
-        return (
-          <>
-            <PreprocessingStatus />
-            <button style={{marginTop:16}} onClick={triggerMFCCExtraction}>
-              Next: Extract MFCC Features
-            </button>
-          </>
-        );
       case 'MFCC_EXTRACTION':
-        return (
-          <>
-            <MFCCExtraction />
-            <button style={{marginTop:16}} onClick={triggerModelInference}>
-              Next: Run Model Inference
-            </button>
-          </>
-        );
       case 'LSTM_INFERENCE':
-        return <ModelInference />;
-      case 'INTERMEDIATE_PREDICTIONS':
-        return <IntermediatePredictions />;
       case 'completed':
-        return <FinalPredictions />;
+        return <ModelInference />;
       default:
         return <AudioInput />;
     }
