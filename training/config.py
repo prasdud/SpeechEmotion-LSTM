@@ -17,11 +17,12 @@ NUM_CLASSES = 8      # RAVDESS emotions (0-7)
 DROPOUT = 0.3        # Dropout rate
 
 # Training
-BATCH_SIZE = 256         # Optimized for RTX 2070 Super (8GB VRAM, uses only 1.38GB)
-LEARNING_RATE = 0.001
+BATCH_SIZE = 64          # Reduced for more frequent gradient updates (better learning)
+LEARNING_RATE = 0.001    # Standard Adam LR now that packing is fixed
 MAX_EPOCHS = 100
 EARLY_STOPPING_PATIENCE = 15  # Stop if no improvement for 15 epochs
 WEIGHT_DECAY = 1e-5           # L2 regularization
+USE_MIXED_PRECISION = False   # Disabled - can cause instability with emotion recognition
 
 # Data Split
 TRAIN_RATIO = 0.70

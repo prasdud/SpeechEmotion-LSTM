@@ -24,8 +24,10 @@ class Trainer:
         self.val_loader = val_loader
         self.device = device
         
-        # Mixed precision training for faster GPU training
-        self.scaler = torch.amp.GradScaler()
+        # Mixed precision training for faster GPU training (if enabled)
+        self.use_amp = USE_MIXED_PRECISION if 'USE_MIXED_PRECISION' in dir() else False
+        if self.use_amp:
+            self.scaler = torch.amp.GradScaler()
         
         # Loss and optimizer
         self.criterion = nn.CrossEntropyLoss()
@@ -66,23 +68,37 @@ class Trainer:
             inputs = inputs.to(self.device)
             labels = labels.to(self.device)
             
-            # Forward pass with mixed precision
+            # Forward pass
             self.optimizer.zero_grad()
             
-            with torch.cuda.amp.autocast():
-                outputs, _ = self.model(inputs)
+            if self.use_amp:
+                with torch.amp.autocast(device_type='cuda', dtype=torch.float16):
+                    outputs, _ = self.model(inputs, lengths=lengths)
+                    loss = self.criterion(outputs, labels)
+                
+                # Backward pass with gradient scaling
+                self.scaler.scale(loss).backward()
+                
+                # Gradient clipping
+                self.scaler.unscale_(self.optimizer)
+                torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=1.0)
+                
+                # Optimizer step
+                self.scaler.step(self.optimizer)
+                self.scaler.update()
+            else:
+                # Standard training without mixed precision
+                outputs, _ = self.model(inputs, lengths=lengths)
                 loss = self.criterion(outputs, labels)
-            
-            # Backward pass with gradient scaling
-            self.scaler.scale(loss).backward()
-            
-            # Gradient clipping
-            self.scaler.unscale_(self.optimizer)
-            torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=1.0)
-            
-            # Optimizer step
-            self.scaler.step(self.optimizer)
-            self.scaler.update()
+                
+                # Backward pass
+                loss.backward()
+                
+                # Gradient clipping
+                torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=1.0)
+                
+                # Optimizer step
+                self.optimizer.step()
             
             # Calculate accuracy
             _, predicted = torch.max(outputs.data, 1)
@@ -118,7 +134,7 @@ class Trainer:
                 labels = labels.to(self.device)
                 
                 # Forward pass
-                outputs, _ = self.model(inputs)
+                outputs, _ = self.model(inputs, lengths=lengths)
                 loss = self.criterion(outputs, labels)
                 
                 # Calculate accuracy

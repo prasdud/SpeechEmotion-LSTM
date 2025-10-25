@@ -43,31 +43,49 @@ class EmotionLSTM(nn.Module):
         # Fully connected layer
         self.fc = nn.Linear(hidden_size, num_classes)
     
-    def forward(self, x, hidden=None):
+    def forward(self, x, hidden=None, lengths=None):
         """
-        Forward pass
+        Forward pass with support for variable-length sequences
         
         TRAINING MODE:
-            x: (batch, seq_len, input_size) - full sequences
+            x: (batch, seq_len, input_size) - padded sequences
             hidden: None (will be initialized)
+            lengths: (batch,) - actual sequence lengths (for packing)
         
         INFERENCE MODE (backend):
             x: (batch, 1, input_size) - single timestep
             hidden: (h_n, c_n) from previous timestep or None
+            lengths: None (not needed for single timestep)
         
         Returns:
             output: (batch, num_classes) - logits for current timestep
             hidden: (h_n, c_n) - updated hidden state
         """
-        # LSTM forward pass
-        # lstm_out: (batch, seq_len, hidden_size)
-        # hidden: tuple of (h_n, c_n), each (num_layers, batch, hidden_size)
-        lstm_out, hidden = self.lstm(x, hidden)
+        # Pack sequences if lengths provided (training mode)
+        if lengths is not None:
+            # Pack padded sequences to skip padding during LSTM processing
+            packed_input = nn.utils.rnn.pack_padded_sequence(
+                x, lengths.cpu(), batch_first=True, enforce_sorted=False
+            )
+            packed_output, hidden = self.lstm(packed_input, hidden)
+            
+            # Unpack sequences
+            lstm_out, _ = nn.utils.rnn.pad_packed_sequence(
+                packed_output, batch_first=True
+            )
+        else:
+            # Inference mode - no packing needed
+            lstm_out, hidden = self.lstm(x, hidden)
         
-        # Take output from last timestep
-        # For training: last timestep of full sequence
-        # For inference: the single timestep provided
-        last_output = lstm_out[:, -1, :]  # (batch, hidden_size)
+        # Get the last valid output for each sequence
+        if lengths is not None:
+            # Use actual sequence lengths to get last valid output
+            batch_size = lstm_out.size(0)
+            idx = (lengths - 1).long().to(lstm_out.device)
+            last_output = lstm_out[range(batch_size), idx, :]  # (batch, hidden_size)
+        else:
+            # Inference mode - just take last timestep
+            last_output = lstm_out[:, -1, :]  # (batch, hidden_size)
         
         # Apply dropout
         last_output = self.dropout(last_output)
