@@ -1,57 +1,48 @@
-# evaluate.py
 import argparse
 import numpy as np
-from dataset import load_manifest, train_val_test_split, make_dataset
-from models import build_bilstm
 import tensorflow as tf
-import matplotlib.pyplot as plt
-from sklearn.metrics import classification_report, confusion_matrix
+from tensorflow.keras.models import load_model
+from sklearn.metrics import classification_report, confusion_matrix, f1_score, accuracy_score
 import seaborn as sns
-import os
+import matplotlib.pyplot as plt
+import pandas as pd
 
-LABELS = ["neutral","calm","happy","sad","angry","fearful","disgust","surprised"]
+EMOTIONS = ["neutral","calm","happy","sad","angry","fearful","disgust","surprised"]
 
-def main(args):
-    df = load_manifest(args.manifest)
-    tr, val, te = train_val_test_split(df, test_size=args.test_size, val_size=args.val_size)
-    sample_feat = np.load(os.path.join(args.featdir, os.path.splitext(os.path.basename(tr['path'].iloc[0]))[0] + ".npy"))
-    T, F = sample_feat.shape
-    input_shape = (T, F)
-    n_classes = len(LABELS)
+def evaluate_model(model_path, ckpt_path=None):
+    X_test, y_test = np.load("data/X_test.npy"), np.load("data/y_test.npy")
 
-    model = build_bilstm(input_shape, n_classes, units=args.units, dropout=args.dropout)
-    model.load_weights(args.ckpt)
-    print("Loaded weights from", args.ckpt)
+    model = load_model(model_path, compile=False)
+    if ckpt_path and tf.io.gfile.exists(ckpt_path):
+        model.load_weights(ckpt_path)
 
-    test_ds = make_dataset(te, args.featdir, batch_size=args.batch_size, shuffle=False, max_len=T)
-    y_true = []
-    y_pred = []
-    for Xb, yb in test_ds:
-        preds = model.predict(Xb)
-        y_true.extend(yb.numpy().tolist())
-        y_pred.extend(preds.argmax(axis=1).tolist())
+    preds = model.predict(X_test, verbose=0)
+    y_pred = np.argmax(preds, axis=1)
 
-    print(classification_report(y_true, y_pred, target_names=LABELS))
-    cm = confusion_matrix(y_true, y_pred, labels=list(range(len(LABELS))))
-    cmn = cm.astype('float') / (cm.sum(axis=1)[:, np.newaxis] + 1e-9)
+    acc = accuracy_score(y_test, y_pred)
+    macro_f1 = f1_score(y_test, y_pred, average="macro")
+    print(f"✅ Accuracy: {acc:.4f} | Macro F1: {macro_f1:.4f}")
 
-    plt.figure(figsize=(9,7))
-    sns.heatmap(cmn, annot=True, fmt='.2f', xticklabels=LABELS, yticklabels=LABELS)
-    plt.xlabel('Predicted'); plt.ylabel('True'); plt.title('Normalized Confusion Matrix')
+    unique_labels = sorted(np.unique(y_test))
+    emotion_subset = [EMOTIONS[i] for i in unique_labels]
+    report = classification_report(y_test, y_pred, target_names=emotion_subset, output_dict=True)
+
+    pd.DataFrame(report).transpose().to_csv("models/evaluation_report.csv")
+
+    cm = confusion_matrix(y_test, y_pred)
+    plt.figure(figsize=(8,6))
+    sns.heatmap(cm, annot=True, fmt="d", cmap="Blues",
+                xticklabels=EMOTIONS, yticklabels=EMOTIONS)
+    plt.title("Confusion Matrix")
+    plt.xlabel("Predicted")
+    plt.ylabel("True")
     plt.tight_layout()
-    plt.savefig('confusion_matrix.png', dpi=200)
-    print("Confusion matrix saved to confusion_matrix.png")
+    plt.savefig("models/confusion_matrix.png", dpi=300)
+    plt.show()
 
 if __name__ == "__main__":
-    import argparse
-    p = argparse.ArgumentParser()
-    p.add_argument("--manifest", default="data/manifest.csv")
-    p.add_argument("--featdir", default="data/features")
-    p.add_argument("--ckpt", default="models/best_weights.h5")
-    p.add_argument("--batch_size", type=int, default=32)
-    p.add_argument("--units", type=int, default=128)
-    p.add_argument("--dropout", type=float, default=0.3)
-    p.add_argument("--test_size", type=float, default=0.15)
-    p.add_argument("--val_size", type=float, default=0.15)
-    args = p.parse_args()
-    main(args)
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--model", type=str, default="models/final_hybrid_model.keras")
+    parser.add_argument("--ckpt", type=str, default="models/best_hybrid.weights.h5")
+    args = parser.parse_args()
+    evaluate_model(args.model, args.ckpt)

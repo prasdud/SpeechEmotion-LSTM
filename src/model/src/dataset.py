@@ -1,73 +1,44 @@
-# dataset.py
+import os
 import argparse
+import numpy as np
 import pandas as pd
 import tensorflow as tf
-import numpy as np
+from sklearn.model_selection import train_test_split
+from tqdm import tqdm
 from pathlib import Path
-from sklearn.model_selection import GroupShuffleSplit
 
-LABELS = ["neutral","calm","happy","sad","angry","fearful","disgust","surprised"]
-LABEL_TO_IDX = {l:i for i,l in enumerate(LABELS)}
+def load_features(df, featdir):
+    X, y = [], []
+    for _, row in tqdm(df.iterrows(), total=len(df), desc="Loading features"):
+        feat_path = Path(featdir) / f"{Path(row['path']).stem}.npy"
+        if feat_path.exists():
+            X.append(np.load(feat_path))
+            y.append(row["label"])
+    X = tf.keras.preprocessing.sequence.pad_sequences(X, padding="post", dtype="float32")
+    y = np.array(y)
+    return X, y
 
-def load_manifest(manifest_csv):
-    df = pd.read_csv(manifest_csv)
-    # drop unknown emotions if any
-    df = df[df['emotion'].isin(LABELS)].reset_index(drop=True)
-    return df
+def main(args):
+    df = pd.read_csv(args.manifest)
+    X, y = load_features(df, args.featdir)
 
-def train_val_test_split(df, test_size=0.15, val_size=0.15, random_state=42):
-    # speaker-independent split by actor using GroupShuffleSplit
-    gss = GroupShuffleSplit(n_splits=1, test_size=test_size+val_size, random_state=random_state)
-    train_idx, hold_idx = next(gss.split(df, groups=df['actor']))
-    hold = df.iloc[hold_idx]
-    # split hold into val and test
-    gss2 = GroupShuffleSplit(n_splits=1, test_size=val_size/(test_size+val_size), random_state=random_state)
-    val_idx, test_idx = next(gss2.split(hold, groups=hold['actor']))
-    val = hold.iloc[val_idx]
-    test = hold.iloc[test_idx]
-    train = df.iloc[train_idx]
-    return train.reset_index(drop=True), val.reset_index(drop=True), test.reset_index(drop=True)
+    X_train, X_temp, y_train, y_temp = train_test_split(X, y, test_size=0.3, stratify=y, random_state=42)
+    X_val, X_test, y_val, y_test = train_test_split(X_temp, y_temp, test_size=0.4, stratify=y_temp, random_state=42)
 
-def npy_loader(path):
-    arr = np.load(path.decode('utf-8'))
-    return arr.astype(np.float32)
+    os.makedirs("data", exist_ok=True)
+    np.save("data/X_train.npy", X_train)
+    np.save("data/y_train.npy", y_train)
+    np.save("data/X_val.npy", X_val)
+    np.save("data/y_val.npy", y_val)
+    np.save("data/X_test.npy", X_test)
+    np.save("data/y_test.npy", y_test)
 
-def make_dataset(df, feat_dir, batch_size=32, shuffle=True, max_len=94):
-    feat_dir = Path(feat_dir)
-    paths = [str(feat_dir / (Path(p).stem + ".npy")) for p in df['path'].values]
-    labels = [LABEL_TO_IDX[e] for e in df['emotion'].values]
-
-    ds = tf.data.Dataset.from_tensor_slices((paths, labels))
-    if shuffle:
-        ds = ds.shuffle(buffer_size=len(paths))
-
-    def _read(path, label):
-        # use numpy loader to load variable-length arrays
-        feat = tf.numpy_function(lambda x: np.load(x.decode()), [path], tf.float32)
-        feat.set_shape([None, None])  # (T, F)
-        # pad / truncate to max_len
-        T = tf.shape(feat)[0]
-        F = tf.shape(feat)[1]
-        feat = feat[:max_len, :]
-        pad_len = max_len - tf.shape(feat)[0]
-        feat = tf.cond(pad_len>0, lambda: tf.pad(feat, [[0,pad_len],[0,0]]), lambda: feat)
-        # return (max_len, F), label
-        return feat, label
-
-    ds = ds.map(_read, num_parallel_calls=tf.data.AUTOTUNE)
-    ds = ds.batch(batch_size).prefetch(tf.data.AUTOTUNE)
-    return ds
+    print(f"Train/test/val sizes: {len(X_train)} {len(X_test)} {len(X_val)}")
+    print(f"X {X_train.shape} y {y_train.shape}")
 
 if __name__ == "__main__":
-    p = argparse.ArgumentParser()
-    p.add_argument("--manifest", default="data/manifest.csv")
-    p.add_argument("--featdir", default="data/features")
-    p.add_argument("--batch_size", type=int, default=32)
-    args = p.parse_args()
-
-    df = load_manifest(args.manifest)
-    tr, val, te = train_val_test_split(df)
-    print("Train/test/val sizes:", len(tr), len(val), len(te))
-    ds = make_dataset(tr, args.featdir, batch_size=args.batch_size)
-    for X,y in ds.take(1):
-        print("X", X.shape, "y", y.shape)
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--manifest", type=str, required=True)
+    parser.add_argument("--featdir", type=str, required=True)
+    args = parser.parse_args()
+    main(args)
