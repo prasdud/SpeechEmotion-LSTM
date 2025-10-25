@@ -6,8 +6,12 @@ import os
 import librosa
 import numpy as np
 import torch
+import warnings
 from torch.utils.data import Dataset
 from config import *
+
+# Suppress the n_fft warning (expected behavior for 25ms frames)
+warnings.filterwarnings('ignore', message='n_fft=2048 is too large for input signal of length=400')
 
 
 class RAVDESSDataset(Dataset):
@@ -227,8 +231,9 @@ def get_data_loaders(data_dir, batch_size=BATCH_SIZE):
         batch_size=batch_size,
         shuffle=True,
         collate_fn=collate_fn,
-        num_workers=4,
-        pin_memory=True
+        num_workers=10,       # Optimized for 12-core CPU (leave 2 for system)
+        pin_memory=True,
+        persistent_workers=True  # Keep workers alive between epochs
     )
     
     val_loader = torch.utils.data.DataLoader(
@@ -236,8 +241,9 @@ def get_data_loaders(data_dir, batch_size=BATCH_SIZE):
         batch_size=batch_size,
         shuffle=False,
         collate_fn=collate_fn,
-        num_workers=4,
-        pin_memory=True
+        num_workers=10,       # Optimized for 12-core CPU (leave 2 for system)
+        pin_memory=True,
+        persistent_workers=True
     )
     
     test_loader = torch.utils.data.DataLoader(
@@ -245,8 +251,9 @@ def get_data_loaders(data_dir, batch_size=BATCH_SIZE):
         batch_size=batch_size,
         shuffle=False,
         collate_fn=collate_fn,
-        num_workers=4,
-        pin_memory=True
+        num_workers=10,       # Optimized for 12-core CPU (leave 2 for system)
+        pin_memory=True,
+        persistent_workers=True
     )
     
     return train_loader, val_loader, test_loader

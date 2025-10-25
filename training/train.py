@@ -24,6 +24,9 @@ class Trainer:
         self.val_loader = val_loader
         self.device = device
         
+        # Mixed precision training for faster GPU training
+        self.scaler = torch.amp.GradScaler()
+        
         # Loss and optimizer
         self.criterion = nn.CrossEntropyLoss()
         self.optimizer = optim.Adam(
@@ -63,18 +66,23 @@ class Trainer:
             inputs = inputs.to(self.device)
             labels = labels.to(self.device)
             
-            # Forward pass
+            # Forward pass with mixed precision
             self.optimizer.zero_grad()
-            outputs, _ = self.model(inputs)
-            loss = self.criterion(outputs, labels)
             
-            # Backward pass
-            loss.backward()
+            with torch.cuda.amp.autocast():
+                outputs, _ = self.model(inputs)
+                loss = self.criterion(outputs, labels)
             
-            # Gradient clipping to prevent exploding gradients
+            # Backward pass with gradient scaling
+            self.scaler.scale(loss).backward()
+            
+            # Gradient clipping
+            self.scaler.unscale_(self.optimizer)
             torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=1.0)
             
-            self.optimizer.step()
+            # Optimizer step
+            self.scaler.step(self.optimizer)
+            self.scaler.update()
             
             # Calculate accuracy
             _, predicted = torch.max(outputs.data, 1)

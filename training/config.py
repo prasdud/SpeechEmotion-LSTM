@@ -17,7 +17,7 @@ NUM_CLASSES = 8      # RAVDESS emotions (0-7)
 DROPOUT = 0.3        # Dropout rate
 
 # Training
-BATCH_SIZE = 32
+BATCH_SIZE = 256         # Optimized for RTX 2070 Super (8GB VRAM, uses only 1.38GB)
 LEARNING_RATE = 0.001
 MAX_EPOCHS = 100
 EARLY_STOPPING_PATIENCE = 15  # Stop if no improvement for 15 epochs
@@ -37,7 +37,7 @@ MODEL_SAVE_PATH = '../src/api/model.pth'
 DEVICE = 'cuda'  # You have GPU
 
 # Data Augmentation
-USE_AUGMENTATION = True
+USE_AUGMENTATION = False  # Disabled - was preventing learning
 AUGMENT_PROB = 0.3  # Probability of applying augmentation
 
 # RAVDESS Emotion Mapping
