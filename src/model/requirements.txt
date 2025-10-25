@@ -1,0 +1,26 @@
+# ===== Core deep learning =====
+tensorflow==2.16.1           # Official GPU-enabled build (Python 3.12+, CUDA 12.3, cuDNN 9.x)
+tensorflow-io-gcs-filesystem>=0.37.0
+
+# ===== Audio processing =====
+librosa==0.10.2.post1
+soundfile==0.12.1
+audioread==3.0.1
+
+# ===== Data handling & ML utilities =====
+numpy==1.26.4                # TensorFlow 2.16 built against NumPy 1.x
+pandas==2.2.3
+scikit-learn==1.5.2
+scipy==1.13.1
+
+# ===== Visualization & debugging =====
+matplotlib==3.9.2
+seaborn==0.13.2
+tqdm==4.66.5
+
+# ===== Audio recording (for real-time inference) =====
+sounddevice==0.5.1
+
+# ===== Misc / plotting backends =====
+joblib>=1.4.2
+packaging>=24.1
