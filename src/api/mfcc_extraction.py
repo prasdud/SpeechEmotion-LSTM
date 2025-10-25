@@ -10,7 +10,7 @@ logging.basicConfig(level=logging.INFO)
 
 
 @log_function
-async def compute_mfcc(websocket, frames, sample_rate=16000, num_mfcc=13):
+async def compute_mfcc(websocket, frames, sample_rate=16000, num_mfcc=40):
     '''
     Compute MFCC features from framed audio
     '''
