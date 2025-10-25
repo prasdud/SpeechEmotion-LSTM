@@ -7,7 +7,7 @@
  */
 import React from 'react';
 
-const FinalPredictions: React.FC = () => {
+function FinalPredictions() {
   // TODO: Show final emotion, confidence bar/pie, audio playback
   return (
     <div>
@@ -15,6 +15,6 @@ const FinalPredictions: React.FC = () => {
       {/* Emotion label, confidence bar/pie chart, audio playback */}
     </div>
   );
-};
+}
 
 export default FinalPredictions;

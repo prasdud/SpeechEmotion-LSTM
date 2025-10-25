@@ -5,7 +5,7 @@
  */
 import React from 'react';
 
-const MFCCExtraction: React.FC = () => {
+function MFCCExtraction() {
   // TODO: Show MFCC extraction progress, heatmap, shape
   return (
     <div>
@@ -13,6 +13,6 @@ const MFCCExtraction: React.FC = () => {
       {/* Progress, heatmap, shape info */}
     </div>
   );
-};
+}
 
 export default MFCCExtraction;

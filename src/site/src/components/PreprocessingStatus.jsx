@@ -1,11 +1,11 @@
 /**
- * PreprocessingStatus.tsx
+ * PreprocessingStatus.jsx
  * Displays status messages from the backend during audio processing
  * Ex. Audio loaded, Normalized, Framed, etc.
  */
 import React from 'react';
 
-const PreprocessingStatus: React.FC = () => {
+function PreprocessingStatus() {
   // TODO: Show real-time preprocessing status, duration, frames
   return (
     <div>
@@ -13,6 +13,6 @@ const PreprocessingStatus: React.FC = () => {
       {/* Status, duration, frames */}
     </div>
   );
-};
+}
 
 export default PreprocessingStatus;

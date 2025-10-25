@@ -6,7 +6,7 @@
  */
 import React from 'react';
 
-const ModelInference: React.FC = () => {
+function ModelInference() {
   // TODO: Show LSTM processing status, progress bar
   return (
     <div>
@@ -14,6 +14,6 @@ const ModelInference: React.FC = () => {
       {/* Status, progress bar */}
     </div>
   );
-};
+}
 
 export default ModelInference;

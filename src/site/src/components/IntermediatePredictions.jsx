@@ -5,7 +5,7 @@
  */
 import React from 'react';
 
-const IntermediatePredictions: React.FC = () => {
+function IntermediatePredictions() {
   // TODO: Show partial predictions, current emotion estimates
   return (
     <div>
@@ -13,6 +13,6 @@ const IntermediatePredictions: React.FC = () => {
       {/* Partial predictions, emotion estimates */}
     </div>
   );
-};
+}
 
 export default IntermediatePredictions;

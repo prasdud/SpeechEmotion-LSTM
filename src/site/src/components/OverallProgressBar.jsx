@@ -4,7 +4,7 @@
  */
 import React from 'react';
 
-const OverallProgressBar: React.FC = () => {
+function OverallProgressBar() {
   // TODO: Show overall progress bar for pipeline
   return (
     <div>
@@ -12,6 +12,6 @@ const OverallProgressBar: React.FC = () => {
       {/* Progress bar for whole pipeline */}
     </div>
   );
-};
+}
 
 export default OverallProgressBar;

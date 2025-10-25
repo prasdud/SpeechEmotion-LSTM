@@ -6,7 +6,7 @@
  */
 import React from 'react';
 
-const PipelineStepper: React.FC = () => {
+function PipelineStepper() {
   // TODO: Show vertical stepper for pipeline stages
   return (
     <div>
@@ -14,6 +14,6 @@ const PipelineStepper: React.FC = () => {
       {/* Stepper: Upload → Preprocessing → MFCC → Model → Prediction */}
     </div>
   );
-};
+}
 
 export default PipelineStepper;

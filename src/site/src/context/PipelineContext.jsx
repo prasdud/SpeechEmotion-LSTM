@@ -3,39 +3,11 @@
  * Global context is managed here
  */
 
+
 import React, { createContext, useContext, useState, useRef, useEffect } from 'react';
-import type { ReactNode } from 'react';
 
-// data models
-export interface PipelineState {
-  wsConnected: boolean;
-  error: string | null;
+export const PipelineContext = createContext(undefined);
 
-  // Pipeline stages
-  stage: string | null; // 'idle' | 'AUDIO_UPLOAD' | 'audio_processing' | 'MFCC_EXTRACTION' | 'LSTM_INFERENCE' | 'completed'
-  message: string;
-  
-  progress: number; // 0-100
-  partialPredictions: string[];
-  finalPrediction: string | null;
-  
-  // Raw message for debugging
-  lastMessage: any;
-}
-
-// control center
-interface PipelineContextType {
-  state: PipelineState;   // read data
-  setState: React.Dispatch<React.SetStateAction<PipelineState>>; // modify data
-  ws: React.RefObject<WebSocket | null>; // raw WS connection
-  sendAction: (action: string, data?: any) => void; // Send action to backend
-  uploadAudio: (file: File) => void; // Upload audio file
-  triggerMFCCExtraction: () => void; // Trigger MFCC extraction
-  triggerModelInference: () => void;// Trigger model inference
-  reset: () => void; // clear everything
-}
-
-const PipelineContext = createContext<PipelineContextType | undefined>(undefined);
 
 export const usePipeline = () => {
   const ctx = useContext(PipelineContext);
@@ -43,8 +15,9 @@ export const usePipeline = () => {
   return ctx;
 };
 
-export const PipelineProvider = ({ children }: { children: ReactNode }) => {
-  const [state, setState] = useState<PipelineState>({
+
+export const PipelineProvider = ({ children }) => {
+  const [state, setState] = useState({
     wsConnected: false,
     error: null,
     stage: null,
@@ -55,7 +28,7 @@ export const PipelineProvider = ({ children }: { children: ReactNode }) => {
     lastMessage: null,
   });
 
-  const ws = useRef<WebSocket | null>(null);
+  const ws = useRef(null);
 
   // Initialize WebSocket connection
   useEffect(() => {
@@ -108,7 +81,7 @@ export const PipelineProvider = ({ children }: { children: ReactNode }) => {
               updatedPartialPredictions.push(partialPrediction);
             }
 
-            const newState: PipelineState = {
+            const newState = {
               ...prev,
               stage: stage || prev.stage,
               message,
@@ -139,7 +112,7 @@ export const PipelineProvider = ({ children }: { children: ReactNode }) => {
       };
 
       return () => {
-        ws.current?.close();
+        if (ws.current) ws.current.close();
       };
     } catch (err) {
       console.error('Failed to create WebSocket:', err);
@@ -151,7 +124,7 @@ export const PipelineProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   // Send action to backend
-  const sendAction = (action: string, data: any = {}) => {
+  const sendAction = (action, data = {}) => {
     if (!ws.current || ws.current.readyState !== WebSocket.OPEN) {
       console.error('WebSocket not connected');
       setState((prev) => ({
@@ -167,10 +140,10 @@ export const PipelineProvider = ({ children }: { children: ReactNode }) => {
   };
 
   // Upload audio file
-  const uploadAudio = (file: File) => {
+  const uploadAudio = (file) => {
     const reader = new FileReader();
     reader.onload = (e) => {
-      const base64 = (e.target?.result as string).split(',')[1];
+      const base64 = (e.target && e.target.result ? e.target.result : '').split(',')[1];
       setState((prev) => ({
         ...prev,
         stage: 'AUDIO_UPLOAD',
@@ -206,7 +179,7 @@ export const PipelineProvider = ({ children }: { children: ReactNode }) => {
   // Reset pipeline to initial state
   const reset = () => {
     setState({
-      wsConnected: ws.current?.readyState === WebSocket.OPEN,
+      wsConnected: ws.current && ws.current.readyState === WebSocket.OPEN,
       error: null,
       stage: 'idle',
       message: '',
