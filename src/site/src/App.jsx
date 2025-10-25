@@ -4,6 +4,7 @@ import AudioInput from './components/AudioInput';
 import ModelInference from './components/ModelInference';
 import PipelineStepper from './components/PipelineStepper';
 import OverallProgressBar from './components/OverallProgressBar';
+import './App.css';
 
 function PipelineStages() {
   try {
@@ -33,8 +34,11 @@ function App() {
     console.log('[frontend] App component rendered');
     return (
       <PipelineProvider>
-        <div style={{ maxWidth: 800, margin: '0 auto', padding: 24 }}>
-          <h1>Speech Emotion Recognition Pipeline</h1>
+        <div className="app-container">
+          <div className="app-header">
+            <h1>🎙️ Speech Emotion Recognition</h1>
+            <p>Real-time emotion detection from audio using deep learning</p>
+          </div>
           <PipelineStepper />
           <OverallProgressBar />
           <PipelineStages />

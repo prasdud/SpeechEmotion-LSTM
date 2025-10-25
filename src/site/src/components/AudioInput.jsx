@@ -80,7 +80,15 @@ function AudioInput({ onAudioSelected }) {
   };
 
   return (
-    <div className="audio-input-container">
+    <div className="card audio-input-container">
+      <div style={{textAlign: 'center', marginBottom: '2rem'}}>
+        <div style={{fontSize: '3rem', marginBottom: '1rem'}}>🎙️</div>
+        <h2 style={{marginBottom: '0.5rem', textAlign: 'center'}}>Upload Audio File</h2>
+        <p style={{color: 'var(--text-muted)', fontSize: '0.95rem'}}>
+          Select a .wav file to begin emotion analysis
+        </p>
+      </div>
+      
       <input
         type="file"
         accept="audio/wav"
@@ -89,10 +97,55 @@ function AudioInput({ onAudioSelected }) {
         onChange={handleFileChange}
         disabled={isProcessing}
       />
-      <button onClick={handleButtonClick} disabled={isProcessing}>
-        {selectedFile ? selectedFile.name : 'Select Audio File'}
-      </button>
-      {error && <div className="audio-input-error" style={{ color: 'red' }}>{error}</div>}
+      
+      <div style={{display: 'flex', justifyContent: 'center', marginBottom: '1rem'}}>
+        <button 
+          onClick={handleButtonClick} 
+          disabled={isProcessing}
+          style={{
+            maxWidth: '320px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '0.75rem',
+            fontSize: '1.1rem'
+          }}
+        >
+          <span style={{fontSize: '1.25rem'}}>📁</span>
+          {selectedFile ? selectedFile.name : 'Choose Audio File'}
+        </button>
+      </div>
+      
+      {selectedFile && !error && (
+        <div style={{
+          marginTop: '1.5rem',
+          padding: '1rem',
+          background: 'var(--bg-accent)',
+          borderRadius: '12px',
+          border: '1px solid var(--green-light)',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '0.75rem'
+        }}>
+          <span style={{fontSize: '1.5rem'}}>✅</span>
+          <div>
+            <div style={{fontWeight: '600', color: 'var(--text-primary)', marginBottom: '0.25rem'}}>File Selected</div>
+            <div style={{fontSize: '0.9rem', color: 'var(--text-secondary)'}}>{selectedFile.name}</div>
+          </div>
+        </div>
+      )}
+      
+      {error && (
+        <div className="audio-input-error" style={{
+          marginTop: '1.5rem',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '0.75rem'
+        }}>
+          <span style={{fontSize: '1.5rem'}}>⚠️</span>
+          <div>{error}</div>
+        </div>
+      )}
     </div>
   );
 }
