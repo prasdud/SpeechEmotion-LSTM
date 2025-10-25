@@ -1,3 +1,7 @@
+/**
+ * OverallProgressBar.tsx
+ * Shows overall progress bar for the entire pipeline 0 - 100% as the backend sends the updates
+ */
 import React from 'react';
 
 const OverallProgressBar: React.FC = () => {

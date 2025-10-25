@@ -1,3 +1,8 @@
+/**
+ * PreprocessingStatus.tsx
+ * Displays status messages from the backend during audio processing
+ * Ex. Audio loaded, Normalized, Framed, etc.
+ */
 import React from 'react';
 
 const PreprocessingStatus: React.FC = () => {

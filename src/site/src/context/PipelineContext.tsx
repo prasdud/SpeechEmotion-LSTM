@@ -1,3 +1,8 @@
+/**
+ * PipelineContext.tsx
+ * Global context is managed here
+ */
+
 import React, { createContext, useContext, useState, useRef, useEffect } from 'react';
 import type { ReactNode } from 'react';
 

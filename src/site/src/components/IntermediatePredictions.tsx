@@ -1,3 +1,8 @@
+/**
+ * IntermediatePredictions.tsx
+ * Shows real time predictions from the model as frames are processed
+ * Optional: visual chart or text display of current emotion probabilities
+ */
 import React from 'react';
 
 const IntermediatePredictions: React.FC = () => {

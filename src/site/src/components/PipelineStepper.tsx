@@ -1,3 +1,9 @@
+/**
+ * PipelineStepper.tsx
+ * Shows pipleine stages in a vertical stepper visually 
+ * Stages: Audio Upload → Preprocessing → MFCC Extraction → Model Inference → Final Prediction
+ * Highlights current active stage
+ */
 import React from 'react';
 
 const PipelineStepper: React.FC = () => {

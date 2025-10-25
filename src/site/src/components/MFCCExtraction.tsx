@@ -1,3 +1,8 @@
+/**
+ * MFCCExtraction.tsx
+ * Display progress and results of MFCC extraction
+ * Optional: live MFCC heatmap or visual summary of features as theyre being computed
+ */
 import React from 'react';
 
 const MFCCExtraction: React.FC = () => {
