@@ -7,13 +7,19 @@
 import React from 'react';
 
 function ModelInference() {
-  // TODO: Show LSTM processing status, progress bar
-  return (
-    <div>
-      <h2>Model Inference</h2>
-      {/* Status, progress bar */}
-    </div>
-  );
+  try {
+    console.log('[frontend] ModelInference component rendered');
+    // TODO: Show LSTM processing status, progress bar
+    return (
+      <div>
+        <h2>Model Inference</h2>
+        {/* Status, progress bar */}
+      </div>
+    );
+  } catch (err) {
+    console.error('[frontend] Error rendering ModelInference:', err);
+    return <div style={{color:'red'}}>Error rendering ModelInference</div>;
+  }
 }
 
 export default ModelInference;

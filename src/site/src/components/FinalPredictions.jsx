@@ -8,13 +8,19 @@
 import React from 'react';
 
 function FinalPredictions() {
-  // TODO: Show final emotion, confidence bar/pie, audio playback
-  return (
-    <div>
-      <h2>Final Predictions</h2>
-      {/* Emotion label, confidence bar/pie chart, audio playback */}
-    </div>
-  );
+  try {
+    console.log('[frontend] FinalPredictions component rendered');
+    // TODO: Show final emotion, confidence bar/pie, audio playback
+    return (
+      <div>
+        <h2>Final Predictions</h2>
+        {/* Emotion label, confidence bar/pie chart, audio playback */}
+      </div>
+    );
+  } catch (err) {
+    console.error('[frontend] Error rendering FinalPredictions:', err);
+    return <div style={{color:'red'}}>Error rendering FinalPredictions</div>;
+  }
 }
 
 export default FinalPredictions;

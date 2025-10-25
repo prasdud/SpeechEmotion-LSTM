@@ -16,7 +16,10 @@ export const usePipeline = () => {
 };
 
 
+
 export const PipelineProvider = ({ children }) => {
+  // [frontend] Log context provider render
+  console.log('[frontend] PipelineProvider rendered');
   const [state, setState] = useState({
     wsConnected: false,
     error: null,
@@ -36,7 +39,7 @@ export const PipelineProvider = ({ children }) => {
       ws.current = new WebSocket('ws://localhost:8000/ws');
 
       ws.current.onopen = () => {
-        console.log('WebSocket connected');
+        console.log('[frontend] WebSocket connected');
         setState((prev) => ({
           ...prev,
           wsConnected: true,
@@ -46,7 +49,7 @@ export const PipelineProvider = ({ children }) => {
       };
 
       ws.current.onerror = (error) => {
-        console.error('WebSocket error:', error);
+        console.error('[frontend] WebSocket error:', error);
         setState((prev) => ({
           ...prev,
           error: 'WebSocket connection error',
@@ -55,14 +58,14 @@ export const PipelineProvider = ({ children }) => {
       };
 
       ws.current.onclose = () => {
-        console.log('WebSocket disconnected');
+        console.log('[frontend] WebSocket disconnected');
         setState((prev) => ({ ...prev, wsConnected: false }));
       };
 
       ws.current.onmessage = (event) => {
         try {
           const response = JSON.parse(event.data);
-          console.log('Backend message received:', response);
+          console.log('[frontend] Backend message received:', response);
 
           // Extract fields from backend response (matches test.py logic)
           const data = response.data || {};
@@ -93,7 +96,7 @@ export const PipelineProvider = ({ children }) => {
               error: null,
             };
 
-            console.log('State updated:', {
+            console.log('[frontend] State updated:', {
               stage: newState.stage,
               message: newState.message,
               progress: newState.progress,
@@ -103,7 +106,7 @@ export const PipelineProvider = ({ children }) => {
             return newState;
           });
         } catch (err) {
-          console.error('Error parsing message:', err);
+          console.error('[frontend] Error parsing backend message:', err);
           setState((prev) => ({
             ...prev,
             error: 'Failed to parse backend message',
@@ -115,7 +118,7 @@ export const PipelineProvider = ({ children }) => {
         if (ws.current) ws.current.close();
       };
     } catch (err) {
-      console.error('Failed to create WebSocket:', err);
+      console.error('[frontend] Failed to create WebSocket:', err);
       setState((prev) => ({
         ...prev,
         error: 'Failed to connect to WebSocket',
@@ -125,55 +128,90 @@ export const PipelineProvider = ({ children }) => {
 
   // Send action to backend
   const sendAction = (action, data = {}) => {
-    if (!ws.current || ws.current.readyState !== WebSocket.OPEN) {
-      console.error('WebSocket not connected');
+    try {
+      if (!ws.current || ws.current.readyState !== WebSocket.OPEN) {
+        console.error('[frontend] WebSocket not connected');
+        setState((prev) => ({
+          ...prev,
+          error: 'WebSocket not connected',
+        }));
+        return;
+      }
+
+      const message = { action, data };
+      console.log(`[frontend] Sending "${action}":`, message);
+      ws.current.send(JSON.stringify(message));
+    } catch (err) {
+      console.error('[frontend] sendAction error:', err);
       setState((prev) => ({
         ...prev,
-        error: 'WebSocket not connected',
+        error: 'Failed to send action to backend',
       }));
-      return;
     }
-
-    const message = { action, data };
-    console.log(`Sending "${action}":`, message);
-    ws.current.send(JSON.stringify(message));
   };
 
   // Upload audio file
   const uploadAudio = (file) => {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const base64 = (e.target && e.target.result ? e.target.result : '').split(',')[1];
-      setState((prev) => ({
-        ...prev,
-        stage: 'AUDIO_UPLOAD',
-        progress: 0,
-        message: 'Uploading audio...',
-      }));
-      sendAction('upload_audio', {
-        filename: file.name,
-        content: base64,
-      });
-    };
-    reader.readAsDataURL(file);
+    try {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const base64 = (e.target && e.target.result ? e.target.result : '').split(',')[1];
+          setState((prev) => ({
+            ...prev,
+            stage: 'AUDIO_UPLOAD',
+            progress: 0,
+            message: 'Uploading audio...',
+          }));
+          console.log('[frontend] uploadAudio: sending audio to backend');
+          sendAction('upload_audio', {
+            filename: file.name,
+            content: base64,
+          });
+        } catch (err) {
+          setState((prev) => ({ ...prev, error: 'Failed to process audio file' }));
+          console.error('[frontend] uploadAudio error:', err);
+        }
+      };
+      reader.onerror = (e) => {
+        setState((prev) => ({ ...prev, error: 'Failed to read audio file' }));
+        console.error('[frontend] uploadAudio FileReader error:', e);
+      };
+      reader.readAsDataURL(file);
+    } catch (err) {
+      setState((prev) => ({ ...prev, error: 'Unexpected error during audio upload' }));
+      console.error('[frontend] uploadAudio unexpected error:', err);
+    }
   };
 
   // Trigger MFCC extraction (backend already has frames)
   const triggerMFCCExtraction = () => {
-    setState((prev) => ({
-      ...prev,
-      message: 'Extracting MFCC features...',
-    }));
-    sendAction('mfcc_extraction', {});
+    try {
+      setState((prev) => ({
+        ...prev,
+        message: 'Extracting MFCC features...',
+      }));
+      console.log('[frontend] triggerMFCCExtraction: sending mfcc_extraction');
+      sendAction('mfcc_extraction', {});
+    } catch (err) {
+      setState((prev) => ({ ...prev, error: 'Failed to trigger MFCC extraction' }));
+      console.error('[frontend] triggerMFCCExtraction error:', err);
+    }
   };
 
   // Trigger model inference (backend already has MFCCs)
   const triggerModelInference = () => {
-    setState((prev) => ({
-      ...prev,
-      message: 'Running model inference...',
-    }));
-    sendAction('model_inference', {});
+    try {
+      setState((prev) => ({
+        ...prev,
+        message: 'Running model inference...',
+      }));
+      console.log('[frontend] triggerModelInference: sending model_inference');
+      sendAction('model_inference', {});
+    } catch (err) {
+      setState((prev) => ({ ...prev, error: 'Failed to trigger model inference' }));
+      console.error('[frontend] triggerModelInference error:', err);
+    }
   };
 
   // Reset pipeline to initial state
@@ -188,6 +226,7 @@ export const PipelineProvider = ({ children }) => {
       finalPrediction: null,
       lastMessage: null,
     });
+    console.log('[frontend] Pipeline reset to initial state');
   };
 
   return (
