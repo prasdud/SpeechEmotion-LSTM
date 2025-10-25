@@ -9,14 +9,16 @@
 import React, { useContext, useEffect, useRef, useState } from 'react';
 import { PipelineContext } from '../context/PipelineContext';
 
-// Emotion mapping
+// Emotion mapping - RAVDESS 8 emotions
 const EMOTIONS = {
-  0: { name: 'Happy', emoji: '😊', color: '#FFD700' },
-  1: { name: 'Sad', emoji: '😢', color: '#4A90E2' },
-  2: { name: 'Angry', emoji: '😠', color: '#E74C3C' },
-  3: { name: 'Neutral', emoji: '😐', color: '#95A5A6' },
-  4: { name: 'Fearful', emoji: '😨', color: '#9B59B6' },
-  5: { name: 'Surprised', emoji: '😲', color: '#F39C12' }
+  0: { name: 'Neutral', emoji: '😐', color: '#95A5A6' },
+  1: { name: 'Calm', emoji: '😌', color: '#A8D5BA' },
+  2: { name: 'Happy', emoji: '😊', color: '#FFD700' },
+  3: { name: 'Sad', emoji: '😢', color: '#4A90E2' },
+  4: { name: 'Angry', emoji: '😠', color: '#E74C3C' },
+  5: { name: 'Fearful', emoji: '�', color: '#9B59B6' },
+  6: { name: 'Disgust', emoji: '🤢', color: '#7D8C3C' },
+  7: { name: 'Surprised', emoji: '😲', color: '#F39C12' }
 };
 
 function ModelInference() {
