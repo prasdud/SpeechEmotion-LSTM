@@ -37,7 +37,7 @@ async def run_inference(websocket, mfcc_features, model_path):
         model = load_model(model_path)
     except Exception as e:
         logging.error(f"Error loading model: {e}")
-        await send_update(websocket, "error", {"message": f"Error loading model: {e}"})
+        await send_update(websocket, "error", {"message": f"Error loading model: {e}", "progress": 0})
         return
     
     logging.info(f"Model loaded successfully")
@@ -53,6 +53,7 @@ async def run_inference(websocket, mfcc_features, model_path):
     hidden = None
     total_frames = input_tensor.shape[1]
     intermediate_predictions = []
+    progress = 0
     try:
         for i in range(total_frames):
             frame = input_tensor[:, i:i+1, :] # shape (1, 1, num_mfcc)
@@ -72,7 +73,8 @@ async def run_inference(websocket, mfcc_features, model_path):
         logging.error(f"Error during inference: {e}")
         await send_update(websocket, "error", {
             "stage": "LSTM_INFERENCE",
-            "message": f"Error during inference: {e}"
+            "message": f"Error during inference: {e}",
+            "progress": progress
         })
         return
 
@@ -80,7 +82,8 @@ async def run_inference(websocket, mfcc_features, model_path):
         logging.error("No predictions were made during inference.")
         await send_update(websocket, "error", {
             "stage": "LSTM_INFERENCE",
-            "message": "No predictions were made during inference."
+            "message": "No predictions were made during inference.",
+            "progress": progress
         })
         return
 

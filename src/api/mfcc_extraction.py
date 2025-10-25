@@ -17,6 +17,7 @@ async def compute_mfcc(websocket, frames, sample_rate=16000, num_mfcc=13):
     mfcc_features = []
     total_frames = frames.shape[1]
 
+    progress = 0
     for i in range(total_frames):
         frame = frames[:, i]
         if np.all(frame == 0):
@@ -29,13 +30,15 @@ async def compute_mfcc(websocket, frames, sample_rate=16000, num_mfcc=13):
             mfcc_features.append(mfcc_mean)
         except Exception as e:
             logging.error(f"Error computing MFCCs for frame {i}: {e}")
+            progress = round((i / total_frames) * 100, 2)
             await send_update(websocket, "error", {
                 "stage": "MFCC_EXTRACTION",
-                "message": f"Error computing MFCCs for frame {i}: {e}"
+                "message": f"Error computing MFCCs for frame {i}: {e}",
+                "progress": progress
             })
             continue
 
-        if websocket and i % 10 == 0: # send update every 10 frames
+        if websocket and i % 10 == 0:
             progress = round((i / total_frames) * 100, 2)
             await send_update(websocket, "processing", {
                 "stage": "MFCC_EXTRACTION",
@@ -47,7 +50,8 @@ async def compute_mfcc(websocket, frames, sample_rate=16000, num_mfcc=13):
         if websocket:
             await send_update(websocket, "error", {
                 "stage": "MFCC_EXTRACTION",
-                "message": "No MFCC features were computed from the audio frames."
+                "message": "No MFCC features were computed from the audio frames.",
+                "progress": progress
             })
         return None
     
