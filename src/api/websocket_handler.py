@@ -5,6 +5,7 @@ Handles per-connection state for audio frames, MFCCs, and inference results.
 import json
 import logging
 import base64
+import os
 
 from src.api.audio_processing import process_audio
 from src.api.mfcc_extraction import compute_mfcc
@@ -75,7 +76,7 @@ async def handle_message(websocket, message, state):
             return
 
         logging.info("Processing MFCC extraction.")
-        mfccs = await compute_mfcc(websocket, frames, sample_rate=sr)
+        mfccs = await compute_mfcc(websocket, frames, sample_rate=sr, num_mfcc=13)
         state["mfccs"] = mfccs
         await send_update(websocket, "completed", {
             "stage": "MFCC_EXTRACTION",
@@ -89,7 +90,8 @@ async def handle_message(websocket, message, state):
             return
 
         logging.info("Processing model inference.")
-        model_path = data.get("model_path", "path/to/model.pt")
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        model_path = data.get("model_path", os.path.join(current_dir, "model.keras"))
         await run_inference(websocket, mfccs, model_path)
 
     else:
