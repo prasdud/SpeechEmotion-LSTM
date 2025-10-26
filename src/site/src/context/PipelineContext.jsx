@@ -38,7 +38,9 @@ export const PipelineProvider = ({ children }) => {
   // Initialize WebSocket connection
   useEffect(() => {
     try {
-      ws.current = new WebSocket('ws://localhost:8000/ws');
+      // Use environment variable for WebSocket URL, fallback to localhost for development
+      const wsUrl = import.meta.env.VITE_WS_URL || 'ws://localhost:8000/ws';
+      ws.current = new WebSocket(wsUrl);
 
       ws.current.onopen = () => {
         console.log('[frontend] WebSocket connected');

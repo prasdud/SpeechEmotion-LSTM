@@ -1,0 +1,48 @@
+version: '3.8'
+
+services:
+  # Backend API service (development mode with hot reload)
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    container_name: speechemotion-backend-dev
+    ports:
+      - "8000:8000"
+    volumes:
+      # Mount entire source for hot-reload
+      - ./src:/app/src
+      - ./training:/app/training
+      - ./data:/app/data
+      - ./logs.txt:/app/logs.txt
+    environment:
+      - PYTHONUNBUFFERED=1
+      - ENVIRONMENT=development
+    networks:
+      - speechemotion-network
+    restart: unless-stopped
+
+  # Frontend service (development mode with Vite hot reload)
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend.dev
+    container_name: speechemotion-frontend-dev
+    ports:
+      - "5173:5173"
+    volumes:
+      # Mount source for hot-reload
+      - ./src/site:/app
+      # Use named volume for node_modules to avoid conflicts
+      - /app/node_modules
+    depends_on:
+      - backend
+    environment:
+      - VITE_WS_URL=ws://localhost:8000/ws
+    networks:
+      - speechemotion-network
+    restart: unless-stopped
+
+networks:
+  speechemotion-network:
+    driver: bridge
