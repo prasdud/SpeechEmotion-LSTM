@@ -3,11 +3,14 @@ A web-based application that analyzes audio recordings to automatically detect t
 
 ## Running Frontend
 - goto src/site
+- $npm install
 - $npm run dev
 - visit http://localhost:5173/
 
 ## Running backend
 - from project root
+- create virtual env
+- pip3 install -r requirements.txt
 - uvicorn src.api.app:app --reload > logs.txt 2>&1
 
 ## TODO
