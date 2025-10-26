@@ -1,0 +1,45 @@
+version: '3.8'
+
+services:
+  # Backend API service
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    container_name: speechemotion-backend
+    ports:
+      - "8000:8000"
+    volumes:
+      # Mount source for hot-reload during development
+      - ./src/api:/app/src/api
+      - ./training:/app/training
+      # Mount data directory if needed
+      - ./data:/app/data
+      # Mount logs
+      - ./logs.txt:/app/logs.txt
+    environment:
+      - PYTHONUNBUFFERED=1
+    networks:
+      - speechemotion-network
+    restart: unless-stopped
+
+  # Frontend service
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    container_name: speechemotion-frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+    environment:
+      # Pass backend URL to frontend (for runtime configuration)
+      - VITE_WS_URL=ws://localhost:8000/ws
+    networks:
+      - speechemotion-network
+    restart: unless-stopped
+
+networks:
+  speechemotion-network:
+    driver: bridge
