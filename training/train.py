@@ -13,7 +13,12 @@ from sklearn.metrics import confusion_matrix, classification_report
 import seaborn as sns
 
 from config import *
-from model import create_model
+try:
+    from model_enhanced import EmotionLSTM  # Use enhanced model with attention
+    print("✨ Using enhanced model with attention and batch normalization")
+except ImportError:
+    from model import EmotionLSTM  # Fallback to basic model
+    print("⚠️  Using basic model (enhanced model not found)")
 from dataset import get_data_loaders
 
 
@@ -29,20 +34,29 @@ class Trainer:
         if self.use_amp:
             self.scaler = torch.amp.GradScaler()
         
-        # Loss and optimizer
-        self.criterion = nn.CrossEntropyLoss()
+        # Loss with class weights to handle imbalanced classes
+        if 'CLASS_WEIGHTS' in dir():
+            class_weights = torch.tensor([CLASS_WEIGHTS[i] for i in range(NUM_CLASSES)], 
+                                        dtype=torch.float32).to(device)
+            self.criterion = nn.CrossEntropyLoss(weight=class_weights)
+            print(f"   Using class weights: {CLASS_WEIGHTS}")
+        else:
+            self.criterion = nn.CrossEntropyLoss()
+            
         self.optimizer = optim.Adam(
             model.parameters(), 
             lr=LEARNING_RATE, 
             weight_decay=WEIGHT_DECAY
         )
         
-        # Learning rate scheduler
+        # Learning rate scheduler (use config values if available)
+        lr_patience = REDUCE_LR_PATIENCE if 'REDUCE_LR_PATIENCE' in dir() else 10
+        lr_factor = REDUCE_LR_FACTOR if 'REDUCE_LR_FACTOR' in dir() else 0.5
         self.scheduler = ReduceLROnPlateau(
             self.optimizer, 
             mode='max',  # Maximize validation accuracy
-            factor=0.5, 
-            patience=5
+            factor=lr_factor, 
+            patience=lr_patience
         )
         
         # Training history
@@ -281,7 +295,24 @@ def main():
     
     # Create model
     print("\n🏗️  Creating model...")
-    model = create_model()
+    model = EmotionLSTM(
+        input_size=INPUT_SIZE,
+        hidden_size=HIDDEN_SIZE,
+        num_layers=NUM_LAYERS,
+        num_classes=NUM_CLASSES,
+        dropout=DROPOUT,
+        use_attention=USE_ATTENTION,
+        use_batch_norm=USE_BATCH_NORM
+    )
+    print(f"   Input size: {INPUT_SIZE} features (39 = 13 MFCCs + 13 deltas + 13 delta-deltas)")
+    print(f"   Attention: {model.use_attention}")
+    print(f"   Batch norm: {model.use_batch_norm}")
+    print(f"   Dropout: {DROPOUT}")
+    
+    # Verify enhanced features are enabled
+    assert model.use_attention == USE_ATTENTION, f"Attention mismatch: {model.use_attention} != {USE_ATTENTION}"
+    assert model.use_batch_norm == USE_BATCH_NORM, f"Batch norm mismatch: {model.use_batch_norm} != {USE_BATCH_NORM}"
+
     
     # Create trainer
     trainer = Trainer(model, train_loader, val_loader, DEVICE)
@@ -289,16 +320,31 @@ def main():
     # Train
     best_acc = trainer.train()
     
-    # Load best model and save for production
+    # Load best model and save for production (state_dict format)
     print("\n💾 Saving final model for production...")
-    best_checkpoint = torch.load(os.path.join(CHECKPOINT_DIR, 'best_model.pth'))
+    best_checkpoint = torch.load(os.path.join(CHECKPOINT_DIR, 'best_model.pth'), weights_only=True)
     model.load_state_dict(best_checkpoint['model_state_dict'])
     model.eval()
     
-    # Save full model (for backend)
+    # Save as state_dict + config (BETTER than full model pickle)
     os.makedirs(os.path.dirname(MODEL_SAVE_PATH), exist_ok=True)
-    torch.save(model, MODEL_SAVE_PATH)
-    print(f"✅ Saved production model to: {MODEL_SAVE_PATH}")
+    torch.save({
+        'model_state_dict': best_checkpoint['model_state_dict'],
+        'model_config': {
+            'input_size': INPUT_SIZE,
+            'hidden_size': HIDDEN_SIZE,
+            'num_layers': NUM_LAYERS,
+            'num_classes': NUM_CLASSES,
+            'dropout': DROPOUT,
+            'use_attention': USE_ATTENTION,
+            'use_batch_norm': USE_BATCH_NORM,
+        },
+        'emotion_labels': EMOTION_LABELS,
+        'epoch': best_checkpoint['epoch'],
+        'val_acc': best_checkpoint['val_acc'],
+    }, MODEL_SAVE_PATH)
+    print(f"✅ Saved production model (state_dict) to: {MODEL_SAVE_PATH}")
+
     
     print("\n✨ Training pipeline complete!")
     print(f"Best validation accuracy: {best_acc:.2f}%")

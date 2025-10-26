@@ -9,11 +9,9 @@ function OverallProgressBar() {
   try {
     const { state } = useContext(PipelineContext);
     console.log('[frontend] OverallProgressBar component rendered');
-    // Always show lastGoodProgress if pipeline is completed, or if error and lastGoodProgress exists
-    let progress = state.progress || 0;
-    if ((state.pipelineCompleted || (state.error && state.lastGoodProgress)) && state.lastGoodProgress) {
-      progress = state.lastGoodProgress;
-    }
+    
+    // Use current progress, which should stay at 100 once pipeline completes
+    const progress = state.progress || 0;
     
     return (
       <div className="card" style={{marginBottom: '2rem'}}>

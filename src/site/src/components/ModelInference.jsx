@@ -16,7 +16,7 @@ const EMOTIONS = {
   2: { name: 'Happy', emoji: '😊', color: '#FFD700' },
   3: { name: 'Sad', emoji: '😢', color: '#4A90E2' },
   4: { name: 'Angry', emoji: '😠', color: '#E74C3C' },
-  5: { name: 'Fearful', emoji: '�', color: '#9B59B6' },
+  5: { name: 'Fearful', emoji: '😨', color: '#9B59B6' },
   6: { name: 'Disgust', emoji: '🤢', color: '#7D8C3C' },
   7: { name: 'Surprised', emoji: '😲', color: '#F39C12' }
 };
@@ -206,33 +206,54 @@ function ModelInference() {
               padding: '1rem',
               borderRadius: '12px'
             }}>
-              <div style={{fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: '600', marginBottom: '0.75rem'}}>Confidence Distribution</div>
-              {Array.isArray(state.finalPrediction.confidence) && state.finalPrediction.confidence.map((conf, i) => (
-                <div key={i} style={{marginBottom: '0.5rem'}}>
-                  <div style={{display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', marginBottom: '0.25rem'}}>
-                    <span style={{color: 'var(--text-secondary)', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '0.5rem'}}>
-                      <span style={{fontSize: '1.25rem'}}>{EMOTIONS[i]?.emoji}</span>
-                      {EMOTIONS[i]?.name || `Class ${i}`}
-                    </span>
-                    <span style={{color: 'var(--text-primary)', fontWeight: '700'}}>{(conf * 100).toFixed(1)}%</span>
-                  </div>
-                  <div style={{
-                    height: '8px',
-                    background: 'var(--border-color)',
-                    borderRadius: '4px',
-                    overflow: 'hidden'
-                  }}>
+              <div style={{fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: '600', marginBottom: '0.75rem'}}>
+                Confidence Distribution (Scale: 0-10)
+              </div>
+              {Array.isArray(state.finalPrediction.confidence) && state.finalPrediction.confidence.map((conf, i) => {
+                const isHighest = i === state.finalPrediction.class;
+                const scaledValue = (conf * 10).toFixed(1); // Scale to 0-10
+                
+                return (
+                  <div key={i} style={{marginBottom: '0.5rem'}}>
+                    <div style={{display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', marginBottom: '0.25rem'}}>
+                      <span style={{
+                        color: isHighest ? EMOTIONS[i]?.color : 'var(--text-secondary)', 
+                        fontWeight: isHighest ? '700' : '600', 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        gap: '0.5rem'
+                      }}>
+                        <span style={{fontSize: '1.25rem'}}>{EMOTIONS[i]?.emoji}</span>
+                        {EMOTIONS[i]?.name || `Class ${i}`}
+                      </span>
+                      <span style={{
+                        color: isHighest ? EMOTIONS[i]?.color : 'var(--text-primary)', 
+                        fontWeight: '700',
+                        fontSize: isHighest ? '0.95rem' : '0.85rem'
+                      }}>
+                        {scaledValue}/10
+                      </span>
+                    </div>
                     <div style={{
-                      width: `${conf * 100}%`,
-                      height: '100%',
-                      background: i === state.finalPrediction.class 
-                        ? `linear-gradient(90deg, ${EMOTIONS[i]?.color || 'var(--green-primary)'}, ${EMOTIONS[i]?.color || 'var(--green-hover)'})80`
-                        : 'var(--text-muted)',
-                      transition: 'width 0.5s ease'
-                    }}></div>
+                      height: isHighest ? '10px' : '8px',
+                      background: 'var(--border-color)',
+                      borderRadius: '4px',
+                      overflow: 'hidden',
+                      transition: 'height 0.3s ease'
+                    }}>
+                      <div style={{
+                        width: `${conf * 100}%`,
+                        height: '100%',
+                        background: isHighest 
+                          ? `linear-gradient(90deg, ${EMOTIONS[i]?.color}, ${EMOTIONS[i]?.color}dd)`
+                          : conf > 0.01 ? 'var(--text-muted)' : 'transparent',
+                        transition: 'width 0.5s ease, background 0.3s ease',
+                        boxShadow: isHighest ? `0 0 8px ${EMOTIONS[i]?.color}40` : 'none'
+                      }}></div>
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
             
             {/* Animation styles */}

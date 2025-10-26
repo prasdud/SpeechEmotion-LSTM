@@ -87,22 +87,33 @@ export const PipelineProvider = ({ children }) => {
               updatedPartialPredictions.push(partialPrediction);
             }
 
-            // If progress is nonzero, update lastGoodProgress
-            const newProgress = progress;
-            let lastGoodProgress = prev.lastGoodProgress || 0;
-            if (newProgress && newProgress > 0) {
-              lastGoodProgress = newProgress;
+            // Calculate progress intelligently
+            let newProgress = progress || prev.progress || 0;
+            
+            // If we have explicit progress from backend, use it
+            if (progress !== undefined && progress > 0) {
+              newProgress = progress;
+            } else {
+              // Otherwise calculate based on stage
+              if (stage === 'AUDIO_UPLOAD') newProgress = 25;
+              else if (stage === 'audio_processing') newProgress = 25;
+              else if (stage === 'MFCC_EXTRACTION') newProgress = 50;
+              else if (stage === 'LSTM_INFERENCE') newProgress = 75;
+              else if (stage === 'completed') newProgress = 100;
             }
-
-            // If pipeline is completed, preserve lastGoodProgress and set pipelineCompleted flag
-            const pipelineCompleted = (stage === 'completed');
+            
+            // Keep the highest progress we've seen
+            const finalProgress = Math.max(newProgress, prev.progress);
+            
+            // If pipeline is completed, keep progress at 100
+            const pipelineCompleted = (stage === 'completed' || finalPrediction !== null);
 
             const newState = {
               ...prev,
               stage: stage || prev.stage,
               message,
-              progress: pipelineCompleted ? lastGoodProgress : newProgress,
-              lastGoodProgress,
+              progress: finalProgress,
+              lastGoodProgress: finalProgress,
               partialPredictions: updatedPartialPredictions,
               finalPrediction: finalPrediction || prev.finalPrediction,
               lastMessage: response,

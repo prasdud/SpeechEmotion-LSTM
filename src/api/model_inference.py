@@ -5,6 +5,7 @@ import torch
 import logging
 import numpy as np
 from src.api.utils.utils import log_function, send_update
+from src.api.model import EmotionLSTM
 
 logging.basicConfig(level=logging.INFO)
 
@@ -15,13 +16,39 @@ def load_model(model_path):
     '''
     logging.info(f"Loading model from {model_path}")
     try:
-        model = torch.load(model_path)
+        # Load checkpoint
+        checkpoint = torch.load(model_path, map_location='cpu', weights_only=True)
+        
+        # Extract config
+        config = checkpoint['model_config']
+        
+        # Reconstruct model architecture WITH attention and batch norm
+        model = EmotionLSTM(
+            input_size=config['input_size'],
+            hidden_size=config['hidden_size'],
+            num_layers=config['num_layers'],
+            num_classes=config['num_classes'],
+            dropout=config['dropout'],
+            use_attention=config.get('use_attention', False),  # CRITICAL: Enable attention!
+            use_batch_norm=config.get('use_batch_norm', False)  # CRITICAL: Enable batch norm!
+        )
+        
+        # Load trained weights
+        model.load_state_dict(checkpoint['model_state_dict'])
+        model.eval()  # Important for inference
+        
+        logging.info(f"Model loaded successfully (epoch {checkpoint['epoch']}, val_acc {checkpoint['val_acc']:.2f}%)")
+        logging.info(f"Model config: input_size={config['input_size']}, attention={config.get('use_attention')}, batch_norm={config.get('use_batch_norm')}")
+        
+        # Return model and emotion labels
+        return model, checkpoint.get('emotion_labels', {
+            0: "Neutral", 1: "Calm", 2: "Happy", 3: "Sad",
+            4: "Angry", 5: "Fearful", 6: "Disgust", 7: "Surprised"
+        })
+        
     except Exception as e:
         logging.error(f"Error loading model: {e}")
         raise e
-    logging.info(f"Model loaded successfully")
-    model.eval() #important for inference
-    return model
 
 
 
@@ -34,7 +61,7 @@ async def run_inference(websocket, mfcc_features, model_path):
     '''
     logging.info(f"Loading model from {model_path}")
     try:
-        model = load_model(model_path)
+        model, emotion_labels = load_model(model_path)
     except Exception as e:
         logging.error(f"Error loading model: {e}")
         await send_update(websocket, "error", {"message": f"Error loading model: {e}"})
@@ -49,25 +76,44 @@ async def run_inference(websocket, mfcc_features, model_path):
 
     # convert MFCCs to torch tensor with batch dimension
     input_tensor = torch.tensor(mfcc_features, dtype=torch.float32).unsqueeze(0) # shape (1, seq_len, num_mfcc)
-
-    hidden = None
+    
     total_frames = input_tensor.shape[1]
-    intermediate_predictions = []
+    seq_length = torch.tensor([total_frames])  # Actual sequence length for attention
+    
     try:
-        for i in range(total_frames):
-            frame = input_tensor[:, i:i+1, :] # shape (1, 1, num_mfcc)
-            output, hidden = model(frame, hidden) # output shape (1, num_classes)
-            probabilities = torch.softmax(output, dim=1).detach().numpy()[0]
-            intermediate_predictions.append(probabilities)
-
-            if i % 10 == 0:
-                progress = round((i / total_frames) * 100, 2)
-                await send_update(websocket, "processing", {
-                    "stage": "LSTM_INFERENCE",
-                    "progress": progress,
-                    "message": f"Processed {i}/{total_frames} frames ({progress}%)",
-                    "partial_prediction": probabilities.tolist()
-                })
+        with torch.no_grad():  # No gradients needed for inference
+            # BATCH MODE INFERENCE (like training) - critical for attention mechanism!
+            # Process entire sequence at once instead of frame-by-frame
+            output, _ = model(input_tensor, hidden=None, lengths=seq_length)
+            
+            # Get probabilities
+            final_probabilities = torch.softmax(output, dim=1).detach().numpy()[0]
+            final_class = int(np.argmax(final_probabilities))
+            final_emotion = emotion_labels[final_class]
+            
+            # Send progress updates
+            await send_update(websocket, "processing", {
+                "stage": "LSTM_INFERENCE",
+                "progress": 50,
+                "message": f"Processing full sequence of {total_frames} frames...",
+                "partial_prediction": {
+                    "probabilities": final_probabilities.tolist(),
+                    "emotion": final_emotion,
+                    "class": final_class
+                }
+            })
+            
+            await send_update(websocket, "processing", {
+                "stage": "LSTM_INFERENCE",
+                "progress": 100,
+                "message": f"Inference complete - Predicted: {final_emotion}",
+                "partial_prediction": {
+                    "probabilities": final_probabilities.tolist(),
+                    "emotion": final_emotion,
+                    "class": final_class
+                }
+            })
+            
     except Exception as e:
         logging.error(f"Error during inference: {e}")
         await send_update(websocket, "error", {
@@ -75,32 +121,25 @@ async def run_inference(websocket, mfcc_features, model_path):
             "message": f"Error during inference: {e}"
         })
         return
-
-    if not intermediate_predictions:
-        logging.error("No predictions were made during inference.")
-        await send_update(websocket, "error", {
-            "stage": "LSTM_INFERENCE",
-            "message": "No predictions were made during inference."
-        })
-        return
-
-    # final prediction from last frame
-    final_probabilities = intermediate_predictions[-1]
-    final_class = int(np.argmax(final_probabilities))
     
-    '''
-    test out instead of last frame for final pred, averale all intermediate preds
-    final_probabilities = np.mean(intermediate_predictions, axis=0)
-    final_class = int(np.argmax(final_probabilities))
-    '''
-    
-    logging.info(f"Final prediction: class {final_class} with probabilities {final_probabilities}")
+    logging.info(f"Final prediction: {final_emotion} (class {final_class}) with confidence {final_probabilities[final_class]:.2%}")
     
     await send_update(websocket, "completed", {
         "stage": "LSTM_INFERENCE",
+        "progress": 100,
         "final_prediction": {
             "class": final_class,
-            "confidence": final_probabilities.tolist()
+            "emotion": final_emotion,
+            "confidence": final_probabilities.tolist(),  # Send full array for confidence distribution
+            "probabilities": final_probabilities.tolist(),
+            "all_emotions": {emotion_labels[i]: float(final_probabilities[i]) for i in range(len(final_probabilities))}
         },
-        "message": "Model inference completed."
+        "message": f"Model inference completed. Predicted emotion: {final_emotion}"
+    })
+    
+    # Send final "completed" stage to mark pipeline as fully done
+    await send_update(websocket, "completed", {
+        "stage": "completed",
+        "progress": 100,
+        "message": "Pipeline completed successfully!"
     })

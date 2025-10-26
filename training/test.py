@@ -11,6 +11,12 @@ from tqdm import tqdm
 
 from config import *
 from dataset import get_data_loaders
+try:
+    from model_enhanced import EmotionLSTM
+    print("✨ Using enhanced model")
+except ImportError:
+    from model import EmotionLSTM
+    print("⚠️  Using basic model")
 
 
 def plot_confusion_matrix(y_true, y_pred, save_path='checkpoints/confusion_matrix.png'):
@@ -50,9 +56,10 @@ def evaluate_model(model, test_loader, device):
         for inputs, labels, lengths in tqdm(test_loader, desc='Testing'):
             inputs = inputs.to(device)
             labels = labels.to(device)
+            lengths = lengths.to(device)
             
-            # Forward pass
-            outputs, _ = model(inputs)
+            # Forward pass (with lengths for PackedSequence)
+            outputs, _ = model(inputs, lengths=lengths)
             
             # Get probabilities
             probs = torch.softmax(outputs, dim=1)
@@ -116,18 +123,47 @@ def main():
     
     # Load model
     print(f"\n📦 Loading model from {model_path}")
-    if model_path.endswith('.pth') and 'checkpoint' in model_path:
-        # Load from checkpoint
-        checkpoint = torch.load(model_path, map_location=DEVICE)
-        from model import create_model
-        model = create_model()
+    
+    # Always try to load as state_dict format (checkpoint or production)
+    try:
+        checkpoint = torch.load(model_path, map_location=DEVICE, weights_only=True)
+        
+        # Get config (from checkpoint or use defaults)
+        if 'model_config' in checkpoint:
+            config = checkpoint['model_config']
+        else:
+            # Fallback to config.py values
+            config = {
+                'input_size': INPUT_SIZE,
+                'hidden_size': HIDDEN_SIZE,
+                'num_layers': NUM_LAYERS,
+                'num_classes': NUM_CLASSES,
+                'dropout': DROPOUT,
+                'use_attention': USE_ATTENTION if 'USE_ATTENTION' in dir() else False,
+                'use_batch_norm': USE_BATCH_NORM if 'USE_BATCH_NORM' in dir() else False,
+            }
+        
+        # Reconstruct model with config
+        model = EmotionLSTM(
+            input_size=config['input_size'],
+            hidden_size=config['hidden_size'],
+            num_layers=config['num_layers'],
+            num_classes=config['num_classes'],
+            dropout=config['dropout'],
+            use_attention=config.get('use_attention', False),
+            use_batch_norm=config.get('use_batch_norm', False)
+        )
         model.load_state_dict(checkpoint['model_state_dict'])
-        print(f"   Loaded checkpoint from epoch {checkpoint['epoch']}")
-        print(f"   Val Acc: {checkpoint['val_acc']:.2f}%")
-    else:
-        # Load full model
-        model = torch.load(model_path, map_location=DEVICE)
-        print(f"   Loaded full model")
+        
+        print(f"   ✅ Loaded checkpoint (epoch {checkpoint.get('epoch', '?')}, val_acc {checkpoint.get('val_acc', 0):.2f}%)")
+        print(f"   📊 Model: {config['input_size']} inputs, attention={config.get('use_attention', False)}, batch_norm={config.get('use_batch_norm', False)}")
+        
+    except Exception as e:
+        print(f"   ⚠️  Failed to load as state_dict: {e}")
+        print(f"   Trying to load as full model...")
+        model = torch.load(model_path, map_location=DEVICE, weights_only=False)
+        print(f"   Loaded full model (legacy format)")
+
     
     model = model.to(DEVICE)
     model.eval()

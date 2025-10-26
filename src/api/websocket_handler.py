@@ -65,6 +65,7 @@ async def handle_message(websocket, message, state):
         state["sr"] = sr
         await send_update(websocket, "completed", {
             "stage": "AUDIO_UPLOAD",
+            "progress": 25,
             "message": f"Audio uploaded and framed into {frames.shape[1]} frames"
         })
 
@@ -80,6 +81,7 @@ async def handle_message(websocket, message, state):
         state["mfccs"] = mfccs
         await send_update(websocket, "completed", {
             "stage": "MFCC_EXTRACTION",
+            "progress": 50,
             "message": f"MFCC extraction done. Shape: {mfccs.shape}"
         })
 
@@ -91,7 +93,7 @@ async def handle_message(websocket, message, state):
 
         logging.info("Processing model inference.")
         current_dir = os.path.dirname(os.path.abspath(__file__))
-        model_path = data.get("model_path", os.path.join(current_dir, "model.keras"))
+        model_path = data.get("model_path", os.path.join(current_dir, "model.pth"))
         await run_inference(websocket, mfccs, model_path)
 
     else:
