@@ -3,7 +3,5 @@ A web-based application that analyzes audio recordings to automatically detect t
 
 
 ## TODO
-- add LSTM model
-- work on the frontend
-- ensure the uploaded file is .wav and matches expected sample rate / channels
+- Add docs
 - dockerize the entire app
