@@ -212,3 +212,4 @@ __marimo__/
 .github
 logs.txt
 /data
+node_modules/
