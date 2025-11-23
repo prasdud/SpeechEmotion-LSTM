@@ -139,7 +139,7 @@ class EmotionLSTM(nn.Module):
             last_output = lstm_out[:, -1, :]  # (batch, hidden_size)
         
         # Apply batch normalization if enabled
-        if self.use_batch_norm and last_output.size(0) > 1:  # Batch norm needs batch_size > 1
+        if self.use_batch_norm:
             last_output = self.batch_norm(last_output)
         
         # Apply dropout

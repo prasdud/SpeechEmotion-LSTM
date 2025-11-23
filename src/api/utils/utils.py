@@ -2,21 +2,33 @@
 Utility functions for the API module.
 '''
 
+import functools
+import inspect
 import logging
+
 logger = logging.getLogger(__name__)
 
 def log_function(func):
-    def wrapper(*args, **kwargs):
-        logger.info("Entering %s", func.__name__)
-        result = func(*args, **kwargs)
-        logger.info("Exiting %s", func.__name__)
-        return result
-    return wrapper
+    if inspect.iscoroutinefunction(func):
+        @functools.wraps(func)
+        async def async_wrapper(*args, **kwargs):
+            logger.info("Entering %s", func.__name__)
+            try:
+                return await func(*args, **kwargs)
+            finally:
+                logger.info("Exiting %s", func.__name__)
+        return async_wrapper
+    else:
+        @functools.wraps(func)
+        def sync_wrapper(*args, **kwargs):
+            logger.info("Entering %s", func.__name__)
+            try:
+                return func(*args, **kwargs)
+            finally:
+                logger.info("Exiting %s", func.__name__)
+        return sync_wrapper
 
 async def send_update(websocket, status: str, data: dict):
-    '''
-        format JSON message and send over websocket
-    '''
     try:
         await websocket.send_json({
             "status": status,
