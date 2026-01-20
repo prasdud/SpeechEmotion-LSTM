@@ -1,6 +1,9 @@
 # SpeechEmotion-LSTM
 A web-based application that analyzes audio recordings to automatically detect the speaker’s emotional state. It extracts MFCC features from speech and uses an LSTM network to classify emotions such as happy, sad, angry, or neutral. The app provides interactive feedback, showing processing progress and final predictions in real time.
 
+# Status, Dev Notes
+Completed project. Not actively looking to work on this. If anyone wants to continue this, maybe a better dataset instead of RAVDESS.
+
 ## Running Frontend
 - goto src/site
 - $npm install
